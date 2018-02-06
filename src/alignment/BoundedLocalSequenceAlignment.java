@@ -60,12 +60,12 @@ public class BoundedLocalSequenceAlignment {
         for (i = 1; i <= MAX_LENGTH; i++) {
                 direction[i][0] = 'I';
                 up[i][0] = 0;//GAP_OPEN + i * GAP_EXT;
-                left[i][0] = Long.MIN_VALUE;
+                left[i][0] = Integer.MIN_VALUE;
                 matrix[i][0] = 0;
             }
         for (j = 1; j <= MAX_BOUND; j++) {
                 direction[0][j] = 'D';
-                up[0][j] = Long.MIN_VALUE;
+                up[0][j] = Integer.MIN_VALUE;
                 left[0][j] = 0;//GAP_OPEN + j * GAP_EXT;
                 matrix[0][j] = 0;
             }
@@ -74,16 +74,18 @@ public class BoundedLocalSequenceAlignment {
         else
             initialize_BLOSUM_matrix();
         
-        /*seq1 = new StringBuilder("MKKEKKTPTPLPSHHVLFAEPGFFLCNFFFVLLKHTQINPFFYFLFILLFIIYIAIIYFVFIRISHFSFSLCRQCNSLGRMIFMCAYLPAASSRSVANPALPPQKKKGTLRTGEVEEQAKGNISFDLCGKQNFQ");
-        seq2 = new StringBuilder("MKKEKKTPTPLPSHHVLFAEPGFFLCNFFFVLLKHTQINPFFYFLFILLFIIYIAIIYFVFIRISHFSFSLCRQCNSLGRMIFMCAYLPAASSRSVANPALPPQKKKKKKKKKGTLRTGEVEEQAKGNISFDLCGKQNFQ");
-        initialize_bound(5 + (seq1.length() + seq2.length()) / 10, seq1.length());
+        /*seq1 = new StringBuilder("AATCCCTAAACCCTAAACCGGTTTCTCTGGTTGAAAAT");
+        seq2 = new StringBuilder("TTAATCCTTAAATCCCTAAACCCTAAACCGGTTTCTCTGGTTGAAAATCATTGCGTAT");
+        System.out.println(MAX_LENGTH);
+        System.out.println(seq1);
+        System.out.println(seq2);
+        initialize_bound(10, seq1.length());
         align(seq1, seq2);
-        System.out.println(get_score());
-        //System.out.println(get_alignment());
-        //calculate_cigar();
-        //System.out.println(get_cigar());
-        //System.out.println(get_score());
-        System.exit(0);  */ 
+        System.out.println("Score: " + get_score());
+        calculate_cigar();
+        System.out.println("Cigar: " + get_cigar());
+        System.out.println(get_alignment());
+        System.exit(0); */ 
     }
     
     public final void initialize_NUCC_matrix(){
@@ -957,13 +959,13 @@ public class BoundedLocalSequenceAlignment {
         m = Math.min(query_len, MAX_LENGTH);
         for (i = 1; i <= m; i++) {
             // below the bound
-            up[i][0] = Long.MIN_VALUE;
-            left[i][0] = Long.MIN_VALUE;
-            matrix[i][0] = Long.MIN_VALUE;
+            up[i][0] = Integer.MIN_VALUE;
+            left[i][0] = Integer.MIN_VALUE;
+            matrix[i][0] = Integer.MIN_VALUE;
             // above the bound
-            up[i][2 * BOUND + 2] = Long.MIN_VALUE;
-            left[i][2 * BOUND + 2] = Long.MIN_VALUE;
-            matrix[i][2 * BOUND + 2] = Long.MIN_VALUE;
+            up[i][2 * BOUND + 2] = Integer.MIN_VALUE;
+            left[i][2 * BOUND + 2] = Integer.MIN_VALUE;
+            matrix[i][2 * BOUND + 2] = Integer.MIN_VALUE;
         }
     }
     
@@ -1024,13 +1026,11 @@ public class BoundedLocalSequenceAlignment {
         }
         //System.out.println("Score = "+ matrix[max_i][max_j]);
         //System.out.println("Coordinates = "+ max_i + " " + max_j);
-        //System.out.println("mmn = "+ m + " " + n);
         } else {
             System.err.println("Sequences are too large for the aligner.");
             System.exit(0);
         }
     }
-
 
     /**
      * Generates the alignment of two nucleotide sequences.
@@ -1067,7 +1067,7 @@ public class BoundedLocalSequenceAlignment {
         }
         for (;j > 0; --j){
             query.append( '-' );
-            subject.append( seq2.charAt(j+i-2) );
+            subject.append( seq2.charAt(j-1) );
         }
         return subject.reverse() + "\n" + query.reverse();
     }

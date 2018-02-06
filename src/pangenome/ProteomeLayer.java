@@ -14,8 +14,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import static java.lang.Integer.max;
-import static java.lang.Integer.min;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -356,7 +354,7 @@ public class ProteomeLayer {
         CompleteLocalSequenceAlignment aligner;
         public Find_similarities() {
             //aligner = new ProteinAlignment(-10,-1,MAX_ALIGNMENT_LENGTH);
-            aligner = new CompleteLocalSequenceAlignment(-10,-1,MAX_ALIGNMENT_LENGTH, 'P');
+            aligner = new CompleteLocalSequenceAlignment(-10,-1,MAX_ALIGNMENT_LENGTH, 1, 'P');
             query = new StringBuilder();
             subject = new StringBuilder();
         }
@@ -413,8 +411,8 @@ public class ProteomeLayer {
                     for (i = 0; i < parts_num; ++i){
                         query.setLength(0);
                         subject.setLength(0);
-                        query.append(p1.substring(i * part_len1, min(m, (i + 1) * part_len1)));
-                        subject.append(p2.substring(i * part_len2, min(n, (i + 1) * part_len2)));
+                        query.append(p1.substring(i * part_len1, Math.min(m, (i + 1) * part_len1)));
+                        subject.append(p2.substring(i * part_len2, Math.min(n, (i + 1) * part_len2)));
                         aligner.align(query, subject );
                         //score += aligner.get_score();
                         //p_score += aligner.perfect_score(query);
@@ -881,12 +879,6 @@ public class ProteomeLayer {
      */
     public void group() {
         startTime = System.currentTimeMillis();
-        System.out.println("Intersection rate = " + INTERSECTION);
-        System.out.println("Threshold = " + THRESHOLD);
-        System.out.println("MCL inflation = " + INFLATION);
-        System.out.println("Contrast = " + CONTRAST);
-        System.out.println("MAX_ALIGNMENT_LENGTH = " + MAX_ALIGNMENT_LENGTH);
-
         graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
                 .setConfig(keep_logical_logs, "4 files").newGraphDatabase();
         registerShutdownHook(graphDb);

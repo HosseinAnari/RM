@@ -6,6 +6,7 @@
 package pangenome;
 
 import alignment.BoundedLocalSequenceAlignment;
+import alignment.CompleteLocalSequenceAlignment;
 import sequence.SequenceDatabase;
 import sequence.SequenceScanner;
 import index.IndexPointer;
@@ -73,12 +74,13 @@ import static pantools.Pantools.GAP_OPEN;
 import static pantools.Pantools.K_SIZE;
 import static pantools.Pantools.MAPPING_NAME;
 import static pantools.Pantools.MAX_ALIGNMENT_LENGTH;
-import static pantools.Pantools.MIN_QUALITY;
-import static pantools.Pantools.MIN_SCORE;
+import static pantools.Pantools.MAX_TRIALS;
+import static pantools.Pantools.MIN_BASE_QUALITY;
+import static pantools.Pantools.MIN_ALIGNMENT_SCORE;
 import static pantools.Pantools.PATH_TO_THE_SRAS_FILE;
 import static pantools.Pantools.READS_DATABASE_PATH;
 import static pantools.Pantools.SHOW_KMERS;
-import static pantools.Pantools.MAX_TRIALS;
+//import static pantools.Pantools.MAX_TRIALS;
 import static pantools.Pantools.THREADS;
 import static pantools.Pantools.low_complexity_label;
 import static pantools.Pantools.scanner;
@@ -115,6 +117,7 @@ public class GenomeLayer {
         StringBuilder sam_record;
         LinkedList<Integer>[] sequences;
         BoundedLocalSequenceAlignment aligner;
+        //CompleteLocalSequenceAlignment aligner;
         StringBuilder highest_cigar;
         StringBuilder qname;
         StringBuilder rname;
@@ -122,11 +125,11 @@ public class GenomeLayer {
         int genomic_offset;
         int ref_start;
         int ref_position;
-        int min_score;
         int BOUND;
         
         public Map(int n, int[] gn, BufferedWriter[] m, BufferedWriter[] u) {
             int i, j, genome;
+            MAX_ALIGNMENT_LENGTH = 1000;
             number = n;
             genome_numbers = Arrays.copyOf(gn, gn.length);
             mapped = m;
@@ -150,6 +153,7 @@ public class GenomeLayer {
             read_quality = new StringBuilder();
             rev_read = new StringBuilder();
             aligner = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, MAX_ALIGNMENT_LENGTH, MAX_BOUND, 'N');
+            //aligner = new CompleteLocalSequenceAlignment(GAP_OPEN, GAP_EXT, MAX_ALIGNMENT_LENGTH, 0.1, 'N');
             highest_cigar = new StringBuilder();
             qname = new StringBuilder();
             rname = new StringBuilder();
@@ -161,7 +165,7 @@ public class GenomeLayer {
             Node node;
             int read_num;
             int i, jump, retries, offset, unmapped_genomes;
-            int num_reads, gaps_interval;
+            int num_reads;
             int[] reads_to_genome, loc;
             int genome, sequence, start, stop, read_mapped = 0, counter;
             int node_len, step;
@@ -174,15 +178,15 @@ public class GenomeLayer {
                 read_num = read_number.getAndIncrement();
                 for (counter = number * num_reads / 50 / THREADS; read_num <= num_reads; ++counter, read_num = read_number.getAndIncrement()) {
                     get_read(read_num);
-                    for (i = 1; i < mapped_to_genome.length; ++i)
-                        mapped_to_genome[i] = false;
-                    unmapped_genomes = mapped_to_genome.length;
+                    //System.out.println(read);
+                    for (i = 1; i < genome_numbers.length; ++i)
+                        mapped_to_genome[genome_numbers[i]] = false;
+                    unmapped_genomes = genome_numbers.length;
                     start = 0;
                     stop = read_len - 1; 
                     step = read_len < 4 * K ? 1 : K;
-                    BOUND = Math.min(MAX_BOUND, 5 + read_len / 10);
+                    BOUND = Math.min(MAX_BOUND, 5 +read_len / 15);
                     aligner.initialize_bound(BOUND, read_len);
-                    min_score = 50;
                     while (unmapped_genomes > 0 && start <= stop){
                         //System.out.println("Start = " + start);
                         try{
@@ -229,7 +233,7 @@ public class GenomeLayer {
                                 }
                                 for (i = 0; i < genome_numbers.length; ++i){
                                     genome = genome_numbers[i];
-                                    if (!sequences[genome].isEmpty() && read_maps_to(genome, min_score)){
+                                    if (!sequences[genome].isEmpty() && read_maps_to(genome)){
                                         mapped_to_genome[genome] = true;
                                         --unmapped_genomes;
                                     }
@@ -255,7 +259,7 @@ public class GenomeLayer {
                             }
                         }
                     }
-                    if (unmapped_genomes < mapped_to_genome.length)
+                    if (unmapped_genomes < genome_numbers.length)
                         ++read_mapped;
                     for (i = 0; i < genome_numbers.length; ++i){
                         genome = genome_numbers[i];
@@ -306,7 +310,7 @@ public class GenomeLayer {
                 System.out.println("read" + read_num);
             if (read_quality.length() > 1){ // input is fastq
                 for (i = read_len - 1; i >= 0; --i)
-                    if (read_quality.charAt(i) > MIN_QUALITY)
+                    if (read_quality.charAt(i) > MIN_BASE_QUALITY)
                         break;
                 read.delete(i + 1, read_len);
                 read_quality.delete(i + 1, read_len);
@@ -349,7 +353,7 @@ public class GenomeLayer {
             return -1;
         }
 
-        public boolean read_maps_to(int genome, int min_score){
+        public boolean read_maps_to(int genome){
             int start, stop, c = 2, sequence, highest_sequence = -1;
             int highest_start = -1, flag, position, quality;
             int score, highest_score = 0, highest_genomic_offset = -1;
@@ -381,7 +385,7 @@ public class GenomeLayer {
                         //System.out.println("ref_start: " + start);
                         //System.out.println(aligner.get_alignment());
                         //System.out.println("Score: " + score);
-                        if (score >= min_score){
+                        if (score >= MIN_ALIGNMENT_SCORE){
                             genomic_offset = aligner.calculate_cigar();
                             cigar = aligner.get_cigar();
                             //System.out.println(aligner.get_cigar());
@@ -410,7 +414,7 @@ public class GenomeLayer {
                 }
             }
             //position = highest_start + 1 + highest_genomic_offset;
-            if (highest_score >= min_score){// && position > 0){
+            if (highest_score >= MIN_ALIGNMENT_SCORE){// && position > 0){
                 position = highest_start + 1 + highest_genomic_offset;
                 sam_record.setLength(0);
                 flag = 0; // The first seqment
@@ -662,13 +666,7 @@ public class GenomeLayer {
                 System.err.println("Error in reading genome numbers");
             }
 
-            System.out.println("Mapping " + sequencingDb.num_sequences[1] + " reads on " + genome_numbers.length + " genomes using " + THREADS + " threads:");
-            /*System.out.println("\nMinimum similarity = " + MIN_SCORE);
-            System.out.println("Minimum base quality = " + MIN_QUALITY);
-            System.out.println("Gap openning penalty = " + GAP_OPEN);
-            System.out.println("Gap extension penalty = " + GAP_EXT);
-            System.out.println("Longest gap interval = " + BOUND);
-            System.out.println("Mapping trials = " + MAX_TRIALS);*/
+            System.out.println("Mapping " + sequencingDb.num_sequences[1] + " reads on " + genome_numbers.length + " genomes :");
             System.out.print("\n0..................................................100\n ");
             BufferedWriter[] out = new BufferedWriter[genomeDb.num_genomes + 1];
             BufferedWriter[] unmapped = new BufferedWriter[genomeDb.num_genomes + 1];

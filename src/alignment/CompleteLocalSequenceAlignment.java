@@ -30,6 +30,7 @@ public class CompleteLocalSequenceAlignment {
     private int max_i;
     private int max_j;
     private char TYPE;
+    private double RATIO;
     
     /**
      * The constructor of the class
@@ -37,12 +38,13 @@ public class CompleteLocalSequenceAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public CompleteLocalSequenceAlignment(int go, int ge, int max_len, char type) {
+    public CompleteLocalSequenceAlignment(int go, int ge, int max_len, double ratio, char type) {
         int i, j;
         GAP_OPEN = go;
         GAP_EXT = ge;
         MAX_LENGTH = max_len;
         TYPE = type;
+        RATIO = ratio;
         query = new StringBuilder();
         subject = new StringBuilder();
     // initialize matrixes
@@ -961,10 +963,6 @@ public class CompleteLocalSequenceAlignment {
         m = seq1.length();
         n = seq2.length();
         max_i = max_j = 0;
-        if (n == 0 || m == 0){
-        System.out.println(s1);
-        System.out.println(s2);
-        }
         /*System.out.println("m: " + m + " n: " + n);
         System.out.println(s1);
         System.out.println(s2);
@@ -978,13 +976,13 @@ public class CompleteLocalSequenceAlignment {
             System.out.print(String.format("%3c", seq2.charAt(j-1) ));
         System.out.println();*/
         for (i = 1; i <= m; i++) {
-            /*start = (int)Math.max(1, Math.round((double)n * i / m - n * RATIO));
+            start = (int)Math.max(1, Math.round((double)n * i / m - n * RATIO));
             stop = (int)Math.min(n, Math.round((double)n * i / m + n * RATIO));
             //System.out.println(start + " " + stop);
             up[i][start - 1] = Integer.MIN_VALUE;
             left[i][start - 1] = Integer.MIN_VALUE;
-            matrix[i][start - 1] = Integer.MIN_VALUE;*/
-            for (j = 1; j <= n; j++) {
+            matrix[i][start - 1] = Integer.MIN_VALUE;
+            for (j = start; j <= stop; j++) {
                 up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
                 left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
                 if (matrix[i - 1][j - 1] >= Math.max( up[i-1][j-1] , left[i-1][j-1]))
@@ -1010,12 +1008,12 @@ public class CompleteLocalSequenceAlignment {
                 //System.out.print(String.format("%3d",left[i][j]));
                 //System.out.print(String.format("%3d",up[i][j]));
             }
-            /*stop = Math.min(n,  j + n / m + 1);
+            stop = Math.min(n,  j + n / m + 1);
             for (; j <= stop; ++j){
                 up[i][j] = Integer.MIN_VALUE;
                 left[i][j] = Integer.MIN_VALUE;
                 matrix[i][j] = Integer.MIN_VALUE;
-            }*/
+            }
             //System.out.println();
         }
         //System.out.println("Score = "+ matrix[max_i][max_j]);
