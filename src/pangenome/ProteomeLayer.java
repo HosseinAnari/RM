@@ -6,6 +6,7 @@
 package pangenome;
 
 import alignment.CompleteLocalSequenceAlignment;
+import alignment.LocalProteinAlignment;
 import alignment.ProteinAlignment;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -41,7 +42,7 @@ import static pangenome.GenomeLayer.getFolderSize;
 import static pantools.Pantools.GRAPH_DATABASE_PATH;
 import static pantools.Pantools.RelTypes;
 import static pantools.Pantools.graphDb;
-import static pantools.Pantools.pangenome_label;
+import static pantools.Pantools.labels;
 import static pantools.Pantools.startTime;
 import static pantools.Pantools.MAX_TRANSACTION_SIZE;
 import static pantools.Pantools.PATH_TO_THE_PANGENOME_DATABASE;
@@ -56,6 +57,7 @@ import static pantools.Pantools.executeCommand_for;
 import static pantools.Pantools.heapSize;
 import static pantools.Pantools.homology_group_label;
 import static pantools.Pantools.mRNA_label;
+import static pantools.Pantools.pangenome_label;
 
 /**
  * Implements all the functionalities related to the annotation layer of the pangenome
@@ -348,13 +350,17 @@ public class ProteomeLayer {
      */
     public class Find_similarities implements Runnable {
         int threshold = THRESHOLD;
+        int MAX_ALIGNMENT_LENGTH = 45000;
+        int part_len = 150;
         StringBuilder query;
         StringBuilder subject;
         //ProteinAlignment aligner;
-        CompleteLocalSequenceAlignment aligner;
+        //CompleteLocalSequenceAlignment aligner;
+        LocalProteinAlignment aligner;
         public Find_similarities() {
             //aligner = new ProteinAlignment(-10,-1,MAX_ALIGNMENT_LENGTH);
-            aligner = new CompleteLocalSequenceAlignment(-10,-1,MAX_ALIGNMENT_LENGTH, 1, 'P');
+            //aligner = new CompleteLocalSequenceAlignment(-10,-1, MAX_ALIGNMENT_LENGTH, 1, 'P');
+            aligner = new LocalProteinAlignment(-10,-1, MAX_ALIGNMENT_LENGTH, part_len, 1, 'P');
             query = new StringBuilder();
             subject = new StringBuilder();
         }
@@ -398,12 +404,50 @@ public class ProteomeLayer {
          * @return The normalized similarity score which is less or equal to 1
          */
         double protein_similarity(String p1, String p2){
+            int m, n, i, start = 0;
+            long score = 0, p_score = 0, s, p;
+            //System.out.println(p1);
+            //System.out.println(p2);
+            m = p1.length();
+            n = p2.length();
+            subject.setLength(0);
+            subject.append(p2);
+            for (i = 0; i < m && start < n; ){
+                //System.out.println(i + " " + start);
+                query.setLength(0);
+                query.append(p1.substring(i, Math.min(m, i + part_len)));
+                aligner.align(query, subject, start);
+                s = aligner.get_matches(start);//
+                p = query.length();//
+                //if (100.0 * s / p > 0)
+                {
+                    score += s;
+                    p_score += p;
+                    start = start + aligner.get_max_j();
+                    i += aligner.get_max_i();
+                } //else{
+                    //i += part_len;
+                //}
+            }
+            //System.out.println("Score = " + score * 100.0 / p_score);
+            return score * 100.0 / p_score;
+        }
+        /*double protein_similarity(String p1, String p2){
             int m, n,i, parts_num = 1, part_len1, part_len2;
             long score = 0, p_score = 0, s, p;
             double max_score = 0;
             m = p1.length();
             n = p2.length();
-            if (n > MAX_ALIGNMENT_LENGTH){
+            query.setLength(0);
+            subject.setLength(0);
+            query.append(p1.substring(0, Math.min(m, MAX_ALIGNMENT_LENGTH)));
+            subject.append(p2.substring(0, Math.min(n, MAX_ALIGNMENT_LENGTH)));
+            aligner.align(query, subject );
+            //score = aligner.get_score();
+            //p_score = aligner.perfect_score(query);
+            score = aligner.get_matches();
+            p_score = query.length();
+            /*if (n > MAX_ALIGNMENT_LENGTH){
                 if (n / m < MAX_ALIGNMENT_LENGTH - 1){
                     parts_num = (n / MAX_ALIGNMENT_LENGTH) + (n % MAX_ALIGNMENT_LENGTH == 0 ? 0 : 1);
                     part_len1 = m / parts_num;
@@ -437,7 +481,8 @@ public class ProteomeLayer {
                 p_score = query.length();
             }
             return score * 100.0 / p_score;
-        }
+        }*/
+
     }    
 
     /**
@@ -786,10 +831,11 @@ public class ProteomeLayer {
      * @param pangenome_path Path to the pan-genome graph database
      */
     public void initialize_panproteome(){
-        String file_path, line, protein_ID;
+        String file_path, file_type, line, protein_ID;
         StringBuilder protein = new StringBuilder();
         Node protein_node = null, panproteome;
         int trsc, num_proteins = 0, genome;
+        String[] fields;
     // If a database folder is already exist in the specified path, removes all the content of it.    
         File theDir = new File(PATH_TO_THE_PANGENOME_DATABASE);
         if (theDir.exists()) {
@@ -803,10 +849,14 @@ public class ProteomeLayer {
             try {
                 theDir.mkdir();
             } catch (SecurityException se) {
-                System.out.println("Failed to create " + PATH_TO_THE_PANGENOME_DATABASE);
+                System.out.println("Failed to create directory " + PATH_TO_THE_PANGENOME_DATABASE);
                 System.exit(1);
             }
         }
+        if (PATH_TO_THE_PROTEOMES_FILE == null){
+            System.out.println("PATH_TO_THE_PROTEOMES_FILE is empty.");
+            System.exit(1);
+        }  
         graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
                 .setConfig(keep_logical_logs, "4 files").newGraphDatabase();
         registerShutdownHook(graphDb);
@@ -816,47 +866,54 @@ public class ProteomeLayer {
                 file_path = protein_paths.readLine().trim();
                 if (file_path.equals("")) // if line is empty
                     continue;
-                BufferedReader in = new BufferedReader(new FileReader(file_path));
-            // skip lines till get to the first id line   
-                do{
-                    line = in.readLine().trim();
-                } while(line.equals(""));
-                protein_ID = line.substring(1);
-                ++num_proteins;
-                while (in.ready()) {
-                    try (Transaction tx = graphDb.beginTx()) {
-                        for (trsc = 0; in.ready() && trsc < MAX_TRANSACTION_SIZE; ++trsc){
-                            line = in.readLine().trim();
-                            if (line.equals("")) // if line is empty
-                                continue;
-                            else if (line.charAt(0) == '>'){
-                                ++num_proteins;
-                                protein_node = graphDb.createNode(mRNA_label);
-                                protein_node.setProperty("protein_ID", protein_ID);
-                                protein_node.setProperty("protein", protein.toString());
-                                protein_node.setProperty("protein_length", protein.length());
-                                protein_node.setProperty("genome",genome);
-                                protein.setLength(0);
-                                protein_ID = line.substring(1);
+                fields = file_path.split("\\.");
+                file_type = fields[fields.length - 1].toLowerCase();
+                if (file_type.equals("fasta") || file_type.equals("faa")){
+                    BufferedReader in = new BufferedReader(new FileReader(file_path));
+                // skip lines till get to the first id line   
+                    do{
+                        line = in.readLine().trim();
+                    } while(line.equals(""));
+                    protein_ID = line.substring(1);
+                    ++num_proteins;
+                    while (in.ready()) {
+                        try (Transaction tx = graphDb.beginTx()) {
+                            for (trsc = 0; in.ready() && trsc < MAX_TRANSACTION_SIZE; ++trsc){
+                                line = in.readLine().trim();
+                                if (line.equals("")) // if line is empty
+                                    continue;
+                                else if (line.charAt(0) == '>'){
+                                    ++num_proteins;
+                                    protein_node = graphDb.createNode(mRNA_label);
+                                    protein_node.setProperty("protein_ID", protein_ID);
+                                    protein_node.setProperty("protein", protein.toString());
+                                    protein_node.setProperty("protein_length", protein.length());
+                                    protein_node.setProperty("genome",genome);
+                                    protein.setLength(0);
+                                    protein_ID = line.substring(1);
+                                }
+                                else
+                                    protein.append(line);
+                                if (num_proteins % 11 == 1)
+                                    System.out.print("\r" + num_proteins + " proteins ");
                             }
-                            else
-                                protein.append(line);
-                            if (num_proteins % 11 == 1)
-                                System.out.print("\r" + num_proteins + " proteins ");
+                            tx.success();
                         }
+                    }
+                    in.close();
+                // For the last protein    
+                    try (Transaction tx = graphDb.beginTx()) {
+                        protein_node = graphDb.createNode(mRNA_label);
+                        protein_node.setProperty("protein_ID", protein_ID);
+                        protein_node.setProperty("protein", protein.toString());
+                        protein_node.setProperty("protein_length", protein.length());
+                        protein_node.setProperty("genome",genome);
+                        protein.setLength(0);
                         tx.success();
                     }
-                }
-                in.close();
-            // For the last protein    
-                try (Transaction tx = graphDb.beginTx()) {
-                    protein_node = graphDb.createNode(mRNA_label);
-                    protein_node.setProperty("protein_ID", protein_ID);
-                    protein_node.setProperty("protein", protein.toString());
-                    protein_node.setProperty("protein_length", protein.length());
-                    protein_node.setProperty("genome",genome);
-                    protein.setLength(0);
-                    tx.success();
+                } else {
+                    System.out.println(file_path + " does not have a valid extention (fasta, faa)");
+                    System.exit(1);
                 }
             }
             System.out.println("\r" + num_proteins + " proteins ");
@@ -879,6 +936,10 @@ public class ProteomeLayer {
      */
     public void group() {
         startTime = System.currentTimeMillis();
+        if (! new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH).exists()) {
+            System.out.println("No database found in " + PATH_TO_THE_PANGENOME_DATABASE);
+            System.exit(1);
+        }
         graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
                 .setConfig(keep_logical_logs, "4 files").newGraphDatabase();
         registerShutdownHook(graphDb);
@@ -896,7 +957,7 @@ public class ProteomeLayer {
         }
         if (THREADS < 3)
             THREADS = 3;
-        System.out.println("Grouping " + num_proteins + " proteins using " + THREADS + " threads:");
+        System.out.println("Number of proteins = " + num_proteins);
 
         MAX_KMER_FREQ = num_proteins / 1000 + 50 * num_genomes; //  because of probability p and copy number of 50
         num_hexamers = 0;

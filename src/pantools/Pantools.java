@@ -11,15 +11,18 @@ import sequence.SequenceDatabase;
 import index.IndexDatabase;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.neo4j.graphdb.DynamicLabel;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
+import static org.neo4j.graphdb.Label.label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.RelationshipType;
 import pangenome.AnnotationLayer;
@@ -43,11 +46,11 @@ public class Pantools {
     public static String PATH_TO_THE_GENOMES_FILE;
     public static String PATH_TO_THE_PROTEOMES_FILE;
     public static String PATH_TO_THE_ANNOTATIONS_FILE;
-    public static String PATH_TO_THE_GENE_RECORDS;
     public static String PATH_TO_THE_REGIONS_FILE;
     public static String PATH_TO_THE_GENOME_NUMBERS_FILE;
     public static String PATH_TO_THE_SRAS_FILE;
-    public static String MAPPING_NAME = "mapped";
+    public static String MAPPING_NAME = "genome";
+    public static String FEATURE = "gene";
     public static double INTERSECTION = 0.09;
     public static double CONTRAST = 8;
     public static double INFLATION = 10.8;
@@ -73,26 +76,27 @@ public class Pantools {
     public static boolean DEBUG;
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
-
-    public static Label pangenome_label = DynamicLabel.label("pangenome");
-    public static Label genome_label = DynamicLabel.label("genome");
-    public static Label sequence_label = DynamicLabel.label("sequence");
-    public static Label nucleotide_label = DynamicLabel.label("nucleotide");
-    public static Label degenerate_label = DynamicLabel.label("degenerate");
-    public static Label annotation_label = DynamicLabel.label("annotation");
-    public static Label variation_label = DynamicLabel.label("variation");
-    public static Label gene_label = DynamicLabel.label("gene");
-    public static Label coding_gene_label = DynamicLabel.label("coding_gene");
-    public static Label mRNA_label = DynamicLabel.label("mRNA");
-    public static Label tRNA_label = DynamicLabel.label("tRNA");
-    public static Label rRNA_label = DynamicLabel.label("rRNA");
-    public static Label CDS_label = DynamicLabel.label("CDS");
-    public static Label exon_label = DynamicLabel.label("exon");
-    public static Label intron_label = DynamicLabel.label("intron");
-    public static Label feature_label = DynamicLabel.label("feature");
-    public static Label broken_protein_label = DynamicLabel.label("broken_protein");
-    public static Label homology_group_label = DynamicLabel.label("homology_group");
-    public static Label low_complexity_label = DynamicLabel.label("low_complexity");
+    public static Map<String,Label> labels;
+    
+    public static Label pangenome_label = label("pangenome");
+    public static Label genome_label = label("genome");
+    public static Label sequence_label = label("sequence");
+    public static Label nucleotide_label = label("nucleotide");
+    public static Label degenerate_label = label("degenerate");
+    public static Label annotation_label = label("annotation");
+    public static Label variation_label = label("variation");
+    public static Label gene_label = label("gene");
+    public static Label coding_gene_label = label("coding_gene");
+    public static Label mRNA_label = label("mRNA");
+    public static Label tRNA_label = label("tRNA");
+    public static Label rRNA_label = label("rRNA");
+    public static Label CDS_label = label("CDS");
+    public static Label exon_label = label("exon");
+    public static Label intron_label = label("intron");
+    public static Label feature_label = label("feature");
+    public static Label broken_protein_label = label("broken_protein");
+    public static Label homology_group_label = label("homology_group");
+    public static Label low_complexity_label = label("low_complexity");   
     
     public static enum RelTypes implements RelationshipType {
         FF, FR, RF, RR,
@@ -115,6 +119,7 @@ public class Pantools {
     public static long num_edges;
     public static long num_bases;
     public static Node db_node;
+    private static String[] label_strings;
 
     public static GenomeLayer seqLayer;
     public static AnnotationLayer annLayer;
@@ -125,8 +130,9 @@ public class Pantools {
      * @param args Command line arguments
      */
     public static void main(String[] args) {
-        int x, i;
+        int x, i, f;
         double y;
+        File theDir;
         if (args.length < 1) {
             print_help_comment();
             System.exit(1);
@@ -134,177 +140,278 @@ public class Pantools {
         seqLayer = new GenomeLayer();
         annLayer = new AnnotationLayer();
         proLayer = new ProteomeLayer();
+        labels = new HashMap<String,Label>();
+        label_strings = new String[]{
+        "pangenome", "genome","sequence","nucleotide","degenerate",
+        "annotation","variation","gene","coding_gene", "mRNA", 
+        "tRNA", "rRNA", "CDS", "exon", "intron", "feature", 
+        "broken_protein", "homology_group", "low_complexity"};        
+        for (i = 0; i < label_strings.length; ++i)
+            labels.put(label_strings[i], label(label_strings[i]));
         System.out.println("\n------------------------------- PanTools ------------------------------");
-        for (i = 1; i < args.length; i += 2){
-            switch (args[i]){
-                case "--kmer-size": case "-ks":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= 6 && x <= 255)
-                        K_SIZE = x;
-                    break;
-                case "--db-path": case "-dp":
-                    PATH_TO_THE_PANGENOME_DATABASE = args[i + 1];
-                    System.out.println("PATH_TO_THE_PANGENOME_DATABASE = " + PATH_TO_THE_PANGENOME_DATABASE);
-                    break;
-                case "--genomes-file": case "-gf":
-                    PATH_TO_THE_GENOMES_FILE = args[i + 1];
-                    System.out.println("PATH_TO_THE_GENOMES_FILE = " + PATH_TO_THE_GENOMES_FILE);
-                    break;
-                case "--proteomes-file": case "-pf":
-                    PATH_TO_THE_PROTEOMES_FILE = args[i + 1];
-                    System.out.println("PATH_TO_THE_PROTEOMES_FILE = " + PATH_TO_THE_PROTEOMES_FILE);
-                    break;
-                case "--annotations-file": case "-af":
-                    PATH_TO_THE_ANNOTATIONS_FILE = args[i + 1];
-                    System.out.println("PATH_TO_THE_ANNOTATIONS_FILE = " + PATH_TO_THE_ANNOTATIONS_FILE);
-                    break;
-                case "--gene-records": case "-gr":
-                    PATH_TO_THE_GENE_RECORDS = args[i + 1];
-                    System.out.println("PATH_TO_THE_GENE_RECORDS = " + PATH_TO_THE_GENE_RECORDS);
-                    break;
-                case "--regions-file": case "-rf":
-                    PATH_TO_THE_REGIONS_FILE = args[i + 1];
-                    System.out.println("PATH_TO_THE_REGIONS_FILE = " + PATH_TO_THE_REGIONS_FILE);
-                    break;
-                case "--genome-numbers": case "-gn":
-                    PATH_TO_THE_GENOME_NUMBERS_FILE = args[i + 1];
-                    System.out.println("PATH_TO_THE_GENOME_NUMBERS_FILE = " + PATH_TO_THE_GENOME_NUMBERS_FILE);
-                    break;
-                case "--sras-file": case "-sf":
-                    PATH_TO_THE_SRAS_FILE = args[i + 1];
-                    System.out.println("PATH_TO_THE_SRAS_FILE = " + PATH_TO_THE_SRAS_FILE);
-                    break;
-                case "--intersection-rate": case "-ir": 
-                    y = Double.parseDouble(args[i + 1]);
-                    if (y >= 0.001 && y <= 0.1)
-                        INTERSECTION = y;
-                    System.out.println("INTERSECTION = " + INTERSECTION);
-                    break;
-                case "--similarity-threshold": case "-st": 
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x > 0 && x < 100)
-                        THRESHOLD = x;
-                    System.out.println("THRESHOLD = " + THRESHOLD);
-                    break;
-                case "--mcl-inflation": case "-mi": 
-                    y = Double.parseDouble(args[i + 1]);
-                    if (y > 1 && y < 19)
-                        INFLATION = y;
-                    System.out.println("INFLATION = " + INFLATION);
-                    break;
-                case "--contrast": case "-ct": 
-                    y = Double.parseDouble(args[i + 1]);
-                    if (y > 0 && y < 10)
-                        CONTRAST = y;
-                    System.out.println("CONTRAST = " + CONTRAST);
-                    break;
-                case "--relaxation": case "-rn": 
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= 1 && x <= 8){
-                        INTERSECTION = new double[] {0, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02}[x];
-                        THRESHOLD = new int[]   {0,95, 85, 75, 65, 55, 45, 35, 25}[x];
-                        INFLATION = new double[]{0, 10.8, 9.6, 8.4, 7.2, 6.0, 4.8, 3.6, 2.4}[x];
-                        CONTRAST = new double[] {0,8, 7, 6, 5, 4, 3, 2, 1 }[x];
-                    }
-                    System.out.println("INTERSECTION = " + INTERSECTION);
-                    System.out.println("THRESHOLD = " + THRESHOLD);
-                    System.out.println("INFLATION = " + INFLATION);
-                    System.out.println("CONTRAST = " + CONTRAST);
-                    break;
-                case "--base-quality": case "-bq":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= 0)
-                        MIN_BASE_QUALITY = x;
-                    System.out.println("MIN_BASE_QUALITY = " + MIN_BASE_QUALITY);
-                    break;
-                case "--threads-number": case "-tn":
-                    THREADS = Integer.parseInt(args[i + 1]);
-                    System.out.println("THREADS = " + THREADS);
-                    break;
-                case "--gap-open": case "-go":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= -50 && x <= -1)
-                        GAP_OPEN = x;
-                    System.out.println("GAP_OPEN = " + GAP_OPEN);
-                    break;
-                case "--gap-extention": case "-ge":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= -50 && x <= -1)
-                        GAP_EXT = x;
-                    System.out.println("GAP_EXT = " + GAP_EXT);
-                    break;
-                case "--max-bound": case "-mb":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= 1 && x <= 100)
-                        MAX_BOUND = x;
-                    System.out.println("MAX_BOUND = " + MAX_BOUND);
-                    break;
-                case "--max-length": case "-ml":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= 100 && x <= 5000)
-                        MAX_ALIGNMENT_LENGTH = x;
-                    System.out.println("MAX_ALIGNMENT_LENGTH = " + MAX_ALIGNMENT_LENGTH);
-                    break;
-                case "--minimum-score": case "-ms":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= 1 && x <= 99)
-                        MIN_ALIGNMENT_SCORE = x;
-                    System.out.println("MIN_ALIGNMENT_SCORE = " + MIN_ALIGNMENT_SCORE);
-                    break;
-                case "--maximum-trial": case "-mt":
-                    x = Integer.parseInt(args[i + 1]);
-                    if (x >= 1 && x <= 1000)
-                        MAX_TRIALS = x;
-                    System.out.println("MAX_TRIALS = " + MAX_TRIALS);
-                    break;
-                case "--mapping-name": case "-mn":
-                    MAPPING_NAME = args[i + 1];
-                    System.out.println("MAPPING_NAME = " + MAPPING_NAME);
-                    break;
-            }  
+        try{
+            for (i = 1; i < args.length; i += 2){
+                switch (args[i]){
+                    case "--kmer-size": case "-ks":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 6 && x <= 255)
+                            K_SIZE = x;
+                        else {
+                            System.out.println("Choose K in the range [6..255] or do not specify it to be calculated automatically.");
+                            System.exit(1);
+                        }
+                        break;
+                    case "--db-path": case "-dp":
+                        PATH_TO_THE_PANGENOME_DATABASE = args[i + 1];
+                        System.out.println("PATH_TO_THE_PANGENOME_DATABASE = " + PATH_TO_THE_PANGENOME_DATABASE);
+                        break;
+                    case "--genomes-file": case "-gf":
+                        PATH_TO_THE_GENOMES_FILE = args[i + 1];
+                        theDir = new File(PATH_TO_THE_GENOMES_FILE);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_GENOMES_FILE + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_GENOMES_FILE = " + PATH_TO_THE_GENOMES_FILE);
+                        break;
+                    case "--proteomes-file": case "-pf":
+                        PATH_TO_THE_PROTEOMES_FILE = args[i + 1];
+                        theDir = new File(PATH_TO_THE_PROTEOMES_FILE);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_PROTEOMES_FILE + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_PROTEOMES_FILE = " + PATH_TO_THE_PROTEOMES_FILE);
+                        break;
+                    case "--annotations-file": case "-af":
+                        PATH_TO_THE_ANNOTATIONS_FILE = args[i + 1];
+                        theDir = new File(PATH_TO_THE_ANNOTATIONS_FILE);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_ANNOTATIONS_FILE + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_ANNOTATIONS_FILE = " + PATH_TO_THE_ANNOTATIONS_FILE);
+                        break;
+                    case "--regions-file": case "-rf":
+                        PATH_TO_THE_REGIONS_FILE = args[i + 1];
+                        theDir = new File(PATH_TO_THE_REGIONS_FILE);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_REGIONS_FILE + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_REGIONS_FILE = " + PATH_TO_THE_REGIONS_FILE);
+                        break;
+                    case "--genome-numbers": case "-gn":
+                        PATH_TO_THE_GENOME_NUMBERS_FILE = args[i + 1];
+                        theDir = new File(PATH_TO_THE_GENOME_NUMBERS_FILE);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_GENOME_NUMBERS_FILE + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_GENOME_NUMBERS_FILE = " + PATH_TO_THE_GENOME_NUMBERS_FILE);
+                        break;
+                    case "--sras-file": case "-sf":
+                        PATH_TO_THE_SRAS_FILE = args[i + 1];
+                        theDir = new File(PATH_TO_THE_SRAS_FILE);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_SRAS_FILE + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_SRAS_FILE = " + PATH_TO_THE_SRAS_FILE);
+                        break;
+                    case "--intersection-rate": case "-ir": 
+                        y = Double.parseDouble(args[i + 1]);
+                        if (y >= 0.001 && y <= 0.1)
+                            INTERSECTION = y;
+                        else {
+                            System.out.println("Choose INTERSECTION in the range [0.001..0.1] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("INTERSECTION = " + INTERSECTION);
+                        break;
+                    case "--similarity-threshold": case "-st": 
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x > 0 && x < 100)
+                            THRESHOLD = x;
+                        else {
+                            System.out.println("Choose THRESHOLD in the range ]0..100[ or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("THRESHOLD = " + THRESHOLD);
+                        break;
+                    case "--mcl-inflation": case "-mi": 
+                        y = Double.parseDouble(args[i + 1]);
+                        if (y > 1 && y < 19)
+                            INFLATION = y;
+                        else {
+                            System.out.println("Choose INFLATION in the range ]1.0..19.0[ or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("INFLATION = " + INFLATION);
+                        break;
+                    case "--contrast": case "-ct": 
+                        y = Double.parseDouble(args[i + 1]);
+                        if (y > 0 && y < 10)
+                            CONTRAST = y;
+                        else {
+                            System.out.println("Choose CONTRAST in the range [1..9] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("CONTRAST = " + CONTRAST);
+                        break;
+                    case "--relaxation": case "-rn": 
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 1 && x <= 8){
+                            INTERSECTION = new double[] {0, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.01}[x];
+                            THRESHOLD = new int[]   {0,95, 85, 75, 65, 55, 45, 35, 25}[x];
+                            INFLATION = new double[]{0, 10.8, 9.6, 8.4, 7.2, 6.0, 4.8, 3.6, 1.2}[x];
+                            CONTRAST = new double[] {0,8, 7, 6, 5, 4, 3, 2, 1 }[x];
+                        }
+                        else {
+                            System.out.println("Choose RELAXATION in the range [1..8] or do not specify it to use the default values.");
+                            System.exit(1);
+                        }
+                        System.out.println("INTERSECTION = " + INTERSECTION);
+                        System.out.println("THRESHOLD = " + THRESHOLD);
+                        System.out.println("INFLATION = " + INFLATION);
+                        System.out.println("CONTRAST = " + CONTRAST);
+                        break;
+                    case "--base-quality": case "-bq":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 0)
+                            MIN_BASE_QUALITY = x;
+                        else {
+                            System.out.println("MIN_BASE_QUALITY should be positive or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MIN_BASE_QUALITY = " + MIN_BASE_QUALITY);
+                        break;
+                    case "--threads-number": case "-tn":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x <= cores)
+                            THREADS = x;
+                        else {
+                            System.out.println("The maximum number of threads you can use on this machine is " + cores + ".");
+                            THREADS = cores;
+                        }
+                        System.out.println("THREADS = " + THREADS);
+                        break;
+                    case "--gap-open": case "-go":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= -50 && x <= -1)
+                            GAP_OPEN = x;
+                        else {
+                            System.out.println("Choose GAP_OPEN in the range [-50..-1] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("GAP_OPEN = " + GAP_OPEN);
+                        break;
+                    case "--gap-extention": case "-ge":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= -5 && x <= -1)
+                            GAP_EXT = x;
+                        else {
+                            System.out.println("Choose GAP_EXT in the range [-5..-1] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("GAP_EXT = " + GAP_EXT);
+                        break;
+                    case "--max-length": case "-ml":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 100 && x <= 5000)
+                            MAX_ALIGNMENT_LENGTH = x;
+                        else {
+                            System.out.println("Choose MAX_ALIGNMENT_LENGTH in the range [100..5000] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MAX_ALIGNMENT_LENGTH = " + MAX_ALIGNMENT_LENGTH);
+                        break;
+                    case "--minimum-score": case "-ms":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 1 && x <= 99)
+                            MIN_ALIGNMENT_SCORE = x;
+                        else {
+                            System.out.println("Choose MIN_ALIGNMENT_SCORE in the range [1..99] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MIN_ALIGNMENT_SCORE = " + MIN_ALIGNMENT_SCORE);
+                        break;
+                    case "--maximum-trial": case "-mt":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 1 && x <= 1000)
+                            MAX_TRIALS = x;
+                        else {
+                            System.out.println("Choose MAX_TRIALS in the range [1..1000] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MAX_TRIALS = " + MAX_TRIALS);
+                        break;
+                    case "--mapping-name": case "-mn":
+                        MAPPING_NAME = args[i + 1];
+                        System.out.println("MAPPING_NAME = " + MAPPING_NAME);
+                        break;
+                    case "--feature_type": case "-ft":
+                        if (labels.containsKey(args[i + 1]))
+                            FEATURE = args[i + 1];
+                        else {
+                            System.out.println(args[i + 1] + " is an unknown feature.");
+                            System.exit(1);
+                        }
+                        System.out.println("FEATURE = " + FEATURE);
+                        break;
+                    case "--help": case "-h":
+                        print_help_comment();
+                        System.exit(1);
+                        break;
+                }  
+            }
+        } catch (NumberFormatException ex){
+            System.out.println("The given number is not in the correct format!");
+            System.exit(1);
         }
         switch (args[0]) {
-            case "build_pangenome":
+            case "bg": case "build_pangenome":
                 seqLayer.initialize_pangenome();
                 break;
-            case "build_panproteome":
+            case "bp": case "build_panproteome":
                 proLayer.initialize_panproteome();
                 break;
-            case "add_genomes":
+            case "ag": case "add_genomes":
                 seqLayer.add_genomes();
                 break;
-            case "add_annotations":
+            case "aa": case "add_annotations":
                 annLayer.add_annotaions();
                 break;
-            case "remove_genomes":
-                seqLayer.remove_genomes();
-                break;
-            case "remove_annotations":
+            case "ra": case "remove_annotations":
                 annLayer.remove_annotaions();
                 break;
-            case "group":
+            case "g": case "group":
                 proLayer.group();
                 break;
-            case "retrieve_genes":
-                annLayer.retrieve_genes();
+            case "rf": case "retrieve_features":
+                annLayer.retrieve_feature();
                 break;
-            case "retrieve_regions":
+            case "rr": case "retrieve_regions":
                 seqLayer.retrieve_regions();
                 break;
-            case "retrieve_genomes":
+            case "rg": case "retrieve_genomes":
                 seqLayer.retrieve_genomes();
                 break;
-            case "retrieve_synteny":
+            case "rs": case "retrieve_synteny":
                 seqLayer.retrieve_synteny(args[2]);
                 break;
-            case "map":
+            case "m": case "map":
                 seqLayer.map_reads();
                 break;
-            case "version": case "-version": case "--version":
+            case "h": case "help":
+                print_help_comment();
+                System.exit(1);
+                break;
+            case "v": case "version":
                 System.out.println("PanTools version 1.1\nNeo4j community edition 3.3.1");
                 System.exit(1);
             default:
-                print_help_comment();
+                System.out.println(args[0] + " is not a valid PanTools command, type 'pantools.jar h [or help]' to see the mannual.");
                 System.exit(1);
         }
         System.out.println("Total time : " + (System.currentTimeMillis() - startTime) / 1000 + "." + (System.currentTimeMillis() - startTime) % 1000 + " seconds");

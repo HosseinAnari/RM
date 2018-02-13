@@ -9,7 +9,7 @@ import java.util.Stack;
  * @author Siavash Sheikhizadeh, Bioinformatics chairgroup, Wageningen
  * University, Netherlands
  */
-public class CompleteLocalSequenceAlignment {
+public class LocalProteinAlignment {
 
     private int match[][];
     private long matrix[][];
@@ -27,6 +27,7 @@ public class CompleteLocalSequenceAlignment {
     private int GAP_OPEN;
     private int GAP_EXT;
     private int MAX_LENGTH;
+    private int PART_LENGTH;
     private int max_i;
     private int max_j;
     private char TYPE;
@@ -38,25 +39,26 @@ public class CompleteLocalSequenceAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public CompleteLocalSequenceAlignment(int go, int ge, int max_len, double ratio, char type) {
+    public LocalProteinAlignment(int go, int ge, int max_len, int part_len, double ratio, char type) {
         int i, j;
         GAP_OPEN = go;
         GAP_EXT = ge;
         MAX_LENGTH = max_len;
+        PART_LENGTH = part_len;
         TYPE = type;
         RATIO = ratio;
         query = new StringBuilder();
         subject = new StringBuilder();
     // initialize matrixes
-        matrix = new long[MAX_LENGTH + 1][MAX_LENGTH + 2];
-        direction = new char[MAX_LENGTH + 1][MAX_LENGTH + 2];
-        up = new long[MAX_LENGTH + 1][MAX_LENGTH + 2];
-        left = new long[MAX_LENGTH + 1][MAX_LENGTH + 2];
+        matrix = new long[PART_LENGTH + 1][MAX_LENGTH + 2];
+        direction = new char[PART_LENGTH + 1][MAX_LENGTH + 2];
+        up = new long[PART_LENGTH + 1][MAX_LENGTH + 2];
+        left = new long[PART_LENGTH + 1][MAX_LENGTH + 2];
         cigar = new StringBuilder();
         operation_stack = new Stack();
         count_stack = new Stack();
         direction[0][0] = 'M';
-        for (i = 1; i <= MAX_LENGTH; i++) {
+        for (i = 1; i <= PART_LENGTH; i++) {
                 direction[i][0] = 'I';
                 up[i][0] = 0;
                 left[i][0] = Integer.MIN_VALUE;
@@ -954,8 +956,8 @@ public class CompleteLocalSequenceAlignment {
      * @return The similarity score
      */
 
-    public void align(StringBuilder s1, StringBuilder s2) {
-        int i, j, start, stop;
+    public void align(StringBuilder s1, StringBuilder s2, int start) {
+        int i, j, stop;
         int m, n;
         seq1 = s1;
         seq2 = s2;
@@ -976,21 +978,21 @@ public class CompleteLocalSequenceAlignment {
             System.out.print(String.format("%3c", seq2.charAt(j-1) ));
         System.out.println();*/
         for (i = 1; i <= m; i++) {
-            start = (int)Math.max(1, Math.round((double)n * i / m - n * RATIO));
-            stop = (int)Math.min(n, Math.round((double)n * i / m + n * RATIO));
+            //start = (int)Math.max(1, Math.round((double)n * i / m - n * RATIO));
+            //stop = (int)Math.min(n, Math.round((double)n * i / m + n * RATIO));
             //System.out.println(start + " " + stop);
-            up[i][start - 1] = Integer.MIN_VALUE;
+            /*up[i][start - 1] = Integer.MIN_VALUE;
             left[i][start - 1] = Integer.MIN_VALUE;
-            matrix[i][start - 1] = Integer.MIN_VALUE;
-            for (j = start; j <= stop; j++) {
+            matrix[i][start - 1] = Integer.MIN_VALUE;*/
+            for (j = 1; j <= n-start; j++) {
                 up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
                 left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
                 if (matrix[i - 1][j - 1] >= Math.max( up[i-1][j-1] , left[i-1][j-1]))
-                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i - 1][j - 1];
+                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(start+j-1)] + matrix[i - 1][j - 1];
                 else if (left[i-1][j-1] >= up[i-1][j-1])
-                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + left[i-1][j-1];
+                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(start+j-1)] + left[i-1][j-1];
                 else
-                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + up[i-1][j-1];
+                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(start+j-1)] + up[i-1][j-1];
                 if (matrix[i][j] > Math.max( up[i][j] , left[i][j]))
                     direction[i][j] = 'M';
                 else if (left[i][j] > up[i][j])
@@ -1008,12 +1010,12 @@ public class CompleteLocalSequenceAlignment {
                 //System.out.print(String.format("%3d",left[i][j]));
                 //System.out.print(String.format("%3d",up[i][j]));
             }
-            stop = Math.min(n,  j + n / m + 1);
+            /*stop = Math.min(n,  j + n / m + 1);
             for (; j <= stop; ++j){
                 up[i][j] = Integer.MIN_VALUE;
                 left[i][j] = Integer.MIN_VALUE;
                 matrix[i][j] = Integer.MIN_VALUE;
-            }
+            }*/
             //System.out.println();
         }
         //System.out.println("Score = "+ matrix[max_i][max_j]);
@@ -1061,7 +1063,7 @@ public class CompleteLocalSequenceAlignment {
         return subject.reverse() + "\n" + query.reverse();
     }
     
-    public long get_matches() {
+    public long get_matches(int start) {
         int i, j;
         long num = 0;
         i = max_i;
@@ -1073,7 +1075,7 @@ public class CompleteLocalSequenceAlignment {
             } else if (direction[i][j] == 'D') {
                 j = j - 1;
             } else if (direction[i][j] == 'M'){
-                if (seq1.charAt(i-1) == seq2.charAt(j-1))
+                if (seq1.charAt(i-1) == seq2.charAt(start+j-1))
                     ++num;
                 i = i - 1;
                 j = j - 1;
@@ -1192,6 +1194,15 @@ public class CompleteLocalSequenceAlignment {
         return new int[]{max_i, max_j};
     }  
     
+    public int get_max_i(){
+        return max_i;
+    }  
+
+    public int get_max_j(){
+        return max_j;
+    }  
+    
+
     public long get_match(int i, int j){
         return match[i][j];
     }
