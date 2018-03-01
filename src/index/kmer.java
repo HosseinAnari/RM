@@ -96,6 +96,15 @@ public class kmer {
         fwd_prefix = p;
     }    
     
+   /**
+     * Sets the prefix to a new value
+     * 
+     * @param p The new prefix for the k-mer  
+     */
+    public void set_rev_prefix(int p){
+        rev_prefix = p;
+    }    
+    
     /**
      * Sets the prefix to a new value
      * 
@@ -219,11 +228,11 @@ public class kmer {
     {
         int i;
         fwd_prefix=((fwd_prefix<<2) & prefix_mask) | ((fwd_suffix[0]>>6) & 0x03 );
-        for(i=0;i<fwd_suffix.length-1;++i)
+        for(i = 0; i < fwd_suffix.length -1;++i)
            fwd_suffix[i]=(byte)((fwd_suffix[i]<<2) | (( fwd_suffix[i+1]>>6) & 0x03)); 
         fwd_suffix[i]=(byte)((fwd_suffix[i]<<2) | base_code); 
         base_code = 3 - base_code;
-        for(i=rev_suffix.length-1;i>0;--i)
+        for(i = rev_suffix.length-1; i > 0; --i)
             rev_suffix[i]=(byte)(((rev_suffix[i]>>2) & 0x03f) | ((rev_suffix[i-1] & 0x03 )<<6)); 
         rev_suffix[i]=(byte)(((rev_suffix[i]>>2) & 0x03f) | ((rev_prefix & 0x03 )<<6)); 
         rev_prefix=(rev_prefix>>2) | (base_code<<shift); 

@@ -31,7 +31,6 @@ public class LocalProteinAlignment {
     private int max_i;
     private int max_j;
     private char TYPE;
-    private double RATIO;
     
     /**
      * The constructor of the class
@@ -39,14 +38,13 @@ public class LocalProteinAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public LocalProteinAlignment(int go, int ge, int max_len, int part_len, double ratio, char type) {
+    public LocalProteinAlignment(int go, int ge, int max_len, int part_len, char type) {
         int i, j;
         GAP_OPEN = go;
         GAP_EXT = ge;
         MAX_LENGTH = max_len;
         PART_LENGTH = part_len;
         TYPE = type;
-        RATIO = ratio;
         query = new StringBuilder();
         subject = new StringBuilder();
     // initialize matrixes

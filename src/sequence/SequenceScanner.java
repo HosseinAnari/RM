@@ -446,9 +446,9 @@ public class SequenceScanner {
     public kmer make_kmer(int genome, int sequence, int position) {
         int j,fwd_code;
         kmer tmp_kmer=new kmer(curr_kmer);
-        for(j = 0; j < K; ++j)
-        {
-            fwd_code=get_code(genome,sequence,position+j);
+        tmp_kmer.reset();
+        for(j = 0; j < K; ++j) {
+            fwd_code=get_code(genome, sequence, position+j);
             tmp_kmer.next_kmer(fwd_code);
         }   
         return tmp_kmer;             

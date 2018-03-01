@@ -51,7 +51,7 @@ public class Pantools {
     public static String PATH_TO_THE_SRAS_FILE;
     public static String MAPPING_NAME = "genome";
     public static String FEATURE = "gene";
-    public static double INTERSECTION = 0.09;
+    public static double INTERSECTION = 0.08;
     public static double CONTRAST = 8;
     public static double INFLATION = 10.8;
     public static int K_SIZE = -1;
@@ -59,7 +59,7 @@ public class Pantools {
     public static int GAP_OPEN = -20;
     public static int GAP_EXT = -1;
     public static int MAX_BOUND = 50;
-    public static int MAX_ALIGNMENT_LENGTH = 500;
+    public static int MAX_ALIGNMENT_LENGTH = 1000;
     public static int MIN_BASE_QUALITY = 0;
     public static int MIN_ALIGNMENT_SCORE = 50;
     public static int MAX_TRIALS = 1; // the minimum number of coordinates to be checked in one sequence
@@ -262,9 +262,9 @@ public class Pantools {
                     case "--relaxation": case "-rn": 
                         x = Integer.parseInt(args[i + 1]);
                         if (x >= 1 && x <= 8){
-                            INTERSECTION = new double[] {0, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.01}[x];
+                            INTERSECTION = new double[] {0, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01}[x];
                             THRESHOLD = new int[]   {0,95, 85, 75, 65, 55, 45, 35, 25}[x];
-                            INFLATION = new double[]{0, 10.8, 9.6, 8.4, 7.2, 6.0, 4.8, 3.6, 1.2}[x];
+                            INFLATION = new double[]{0, 10.8, 9.6, 8.4, 7.2, 6.0, 4.8, 3.6, 2.4}[x];
                             CONTRAST = new double[] {0,8, 7, 6, 5, 4, 3, 2, 1 }[x];
                         }
                         else {
@@ -291,7 +291,7 @@ public class Pantools {
                         if (x <= cores)
                             THREADS = x;
                         else {
-                            System.out.println("The maximum number of threads you can use on this machine is " + cores + ".");
+                            System.out.println("The maximum number of threads on this machine = " + cores + ".");
                             THREADS = cores;
                         }
                         System.out.println("THREADS = " + THREADS);

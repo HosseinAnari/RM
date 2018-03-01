@@ -997,7 +997,6 @@ public class CompleteLocalSequenceAlignment {
                     direction[i][j] = 'D';
                 else
                     direction[i][j] = 'I';
-                
                 if (score < matrix[i][j]){
                     score = matrix[i][j];
                     max_i = i;
@@ -1072,7 +1071,7 @@ public class CompleteLocalSequenceAlignment {
                 i = i - 1;
             } else if (direction[i][j] == 'D') {
                 j = j - 1;
-            } else if (direction[i][j] == 'M'){
+            } else{// if (direction[i][j] == 'M'){
                 if (seq1.charAt(i-1) == seq2.charAt(j-1))
                     ++num;
                 i = i - 1;
@@ -1196,6 +1195,14 @@ public class CompleteLocalSequenceAlignment {
         return match[i][j];
     }
 
+    
+    public int get_max_i(){
+        return max_i;
+    }  
+
+    public int get_max_j(){
+        return max_j;
+    }      
     /**
      * The similarity score of the shorter protein with itself  
      * @param aligner The protein aligner object
@@ -1213,4 +1220,13 @@ public class CompleteLocalSequenceAlignment {
             }
             return score;
         }    
+    
+    public double score(String s1, String s2) {
+            int i, num = 0;
+            for (i = 0; i < s1.length(); ++i)
+                if (s1.charAt(i) == s2.charAt(i))
+                    ++num;
+            return num * 100.0 / s1.length();
+        }    
+
 }
