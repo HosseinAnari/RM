@@ -58,10 +58,11 @@ public class Pantools {
     public static int THRESHOLD = 95;
     public static int GAP_OPEN = -20;
     public static int GAP_EXT = -1;
-    public static int MAX_BOUND = 50;
+    public static int MAX_BOUND = 100;
     public static int MAX_ALIGNMENT_LENGTH = 1000;
     public static int MIN_BASE_QUALITY = 0;
-    public static int MIN_ALIGNMENT_SCORE = 50;
+    public static int ALIGNMENT_MODE = 1; // 0:all, 1:any-best, 2:all-best
+    public static int MIN_ALIGNMENT_SCORE = 10;
     public static int MAX_TRIALS = 1; // the minimum number of coordinates to be checked in one sequence
     
     public static GraphDatabaseService graphDb;
@@ -71,7 +72,7 @@ public class Pantools {
     public static SequenceScanner scanner;
     public static int ANCHORS = 10000; // The number of anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
-    public static int cores = Math.max(Runtime.getRuntime().availableProcessors() / 2, 2);
+    public static int cores = Runtime.getRuntime().availableProcessors();
     public static long heapSize = Runtime.getRuntime().maxMemory();
     public static boolean DEBUG;
     public static boolean SHOW_KMERS;
@@ -288,7 +289,7 @@ public class Pantools {
                         break;
                     case "--threads-number": case "-tn":
                         x = Integer.parseInt(args[i + 1]);
-                        if (x <= cores)
+                        if (x < cores)
                             THREADS = x;
                         else {
                             System.out.println("The maximum number of threads on this machine = " + cores + ".");
@@ -325,6 +326,16 @@ public class Pantools {
                             System.exit(1);
                         }
                         System.out.println("MAX_ALIGNMENT_LENGTH = " + MAX_ALIGNMENT_LENGTH);
+                        break;
+                    case "--max-bound": case "-mb":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 1 && x <= 500)
+                            MAX_BOUND = x;
+                        else {
+                            System.out.println("Choose MAX_BOUND in the range [1..500] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MAX_BOUND = " + MAX_BOUND);
                         break;
                     case "--minimum-score": case "-ms":
                         x = Integer.parseInt(args[i + 1]);

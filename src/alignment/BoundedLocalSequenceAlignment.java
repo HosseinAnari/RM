@@ -954,10 +954,9 @@ public class BoundedLocalSequenceAlignment {
     }
     
     public final void initialize_bound(int bound, int query_len){
-        int i, m;
+        int i;
         BOUND = bound;
-        m = Math.min(query_len, MAX_LENGTH);
-        for (i = 1; i <= m; i++) {
+        for (i = 1; i <= query_len; i++) {
             // below the bound
             up[i][0] = Integer.MIN_VALUE;
             left[i][0] = Integer.MIN_VALUE;

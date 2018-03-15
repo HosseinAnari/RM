@@ -5,8 +5,6 @@
  */
 package pangenome;
 
-import alignment.CompleteLocalSequenceAlignment;
-import alignment.LocalProteinAlignment;
 import alignment.ProteinAlignment;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -49,6 +47,8 @@ import static pantools.Pantools.PATH_TO_THE_PANGENOME_DATABASE;
 import static pantools.Pantools.THRESHOLD;
 import static pantools.Pantools.INTERSECTION;
 import static pantools.Pantools.CONTRAST;
+import static pantools.Pantools.GAP_EXT;
+import static pantools.Pantools.GAP_OPEN;
 import static pantools.Pantools.INFLATION;
 import static pantools.Pantools.MAX_ALIGNMENT_LENGTH;
 import static pantools.Pantools.PATH_TO_THE_PROTEOMES_FILE;
@@ -180,7 +180,7 @@ public class ProteomeLayer {
                 }
                 kmers_proteins_list = new long[MAX_KMERS_NUM][];
                 for (i = 0; i < MAX_KMERS_NUM; ++i){
-                    if (kmer_frequencies[i] > 1 && kmer_frequencies[i] < MAX_KMER_FREQ)//+ num_genomes / 2
+                    if (kmer_frequencies[i] > 1 && kmer_frequencies[i] < MAX_KMER_FREQ)// + num_genomes / 2
                         kmers_proteins_list[i] = new long[kmer_frequencies[i]];
                     kmer_frequencies[i] = 0;
                 }
@@ -315,7 +315,7 @@ public class ProteomeLayer {
                                             crossing_protein = (String)crossing_protein_node.getProperty("protein");
                                             shorter_len = Math.min(protein_length, crossing_protein.length());
                                             if (counter >= frac * (shorter_len - PEPTIDE_SIZE + 1)){
-                                                intersections.offer(new intersection(protein_node, crossing_protein_node,counter));
+                                                intersections.offer(new intersection(protein_node, crossing_protein_node,0));
                                                 ++num_ins;
                                             }
                                         }
@@ -329,7 +329,7 @@ public class ProteomeLayer {
                                     crossing_protein = (String)crossing_protein_node.getProperty("protein");
                                     shorter_len = Math.min(protein_length, crossing_protein.length());
                                     if (counter >= frac * (shorter_len - PEPTIDE_SIZE + 1)){
-                                        intersections.offer(new intersection(protein_node, crossing_protein_node,counter));
+                                        intersections.offer(new intersection(protein_node, crossing_protein_node,0));
                                         ++num_ins;
                                     }
                                 }
@@ -344,7 +344,7 @@ public class ProteomeLayer {
                     System.out.print("0 ......................................... 100\n  "); 
                 // Signify the end of intersections queue.    
                     for (i = 0; i < THREADS; ++i)
-                        intersections.offer(new intersection(null, null,0));// end of queue
+                        intersections.offer(new intersection(null, null,-1));// end of queue
                 } catch(InterruptedException e){
                     System.err.println(e.getMessage());
                 }
@@ -361,21 +361,13 @@ public class ProteomeLayer {
      * Multiple threads can call this runnable.
      */
     public class Find_similarities implements Runnable {
-        int threshold = THRESHOLD;
-        int part_len = 150;
+        int m, n, threshold = THRESHOLD;
         int processed = 0;
-        int MAX_ALIGNMENT_LENGTH = 1000;
-        int id;
         StringBuilder query;
         StringBuilder subject;
-        //ProteinAlignment s_aligner;
-        CompleteLocalSequenceAlignment s_aligner;
-        LocalProteinAlignment l_aligner;
-        public Find_similarities(int i) {
-            id = i;
-            //s_aligner = new ProteinAlignment(-20,-1,MAX_ALIGNMENT_LENGTH);
-            s_aligner = new CompleteLocalSequenceAlignment(-20,-1,MAX_ALIGNMENT_LENGTH, 1, 'P');
-            l_aligner = new LocalProteinAlignment(-20,-1, 45000, part_len, 'P');
+        ProteinAlignment aligner;
+        public Find_similarities() {
+            aligner = new ProteinAlignment(GAP_OPEN, GAP_EXT,MAX_ALIGNMENT_LENGTH);
             query = new StringBuilder();
             subject = new StringBuilder();
         }
@@ -385,7 +377,7 @@ public class ProteomeLayer {
             Node protein_node1, protein_node2;
             String protein1, protein2;
             intersection ints;
-            int num_ints = 0, chunk = 1, m, n;
+            int num_ints = 0;
             boolean all_intersections_found = false;
             try{
                 try(Transaction tx = graphDb.beginTx()){
@@ -399,8 +391,9 @@ public class ProteomeLayer {
                         m = protein1.length();
                         n = protein2.length();
                         if (m == n)
-                            ints.similarity = s_aligner.score(protein1, protein2);
-                        else if (m < n)
+                            ints.similarity = aligner.score(protein1, protein2);
+                        else 
+                            if (m < n)
                             ints.similarity = protein_similarity(protein1, protein2);
                         else
                             ints.similarity = protein_similarity(protein2, protein1);
@@ -413,10 +406,10 @@ public class ProteomeLayer {
                             num_ints = num_intersections.intValue();
                             if (num_ints > 0){
                                 all_intersections_found = true;
-                                chunk = (num_ints - processed * id) / 40;
+                                num_ints -= THREADS * processed;
                             }
                         }
-                        if (all_intersections_found && processed % chunk == 0){
+                        if (all_intersections_found && processed % (num_ints / 40) == 0){
                             System.out.print("|");
                             similarity_bars.getAndIncrement();
                         }
@@ -437,58 +430,32 @@ public class ProteomeLayer {
          * @return The normalized similarity score which is less or equal to 1
          */
         double protein_similarity(String p1, String p2){
-            int m, n, i, start = 0, parts_num, part_len1, part_len2;
+            int m, n,i, parts_num = 1, part_len1, part_len2;
             long score = 0, p_score = 0;
             m = p1.length();
             n = p2.length();
-            //if (n - m < 0.1 * m){
-                if (n > MAX_ALIGNMENT_LENGTH){
-                    parts_num = (n / MAX_ALIGNMENT_LENGTH) + (n % MAX_ALIGNMENT_LENGTH == 0 ? 0 : 1);
-                    part_len1 = m / parts_num;
-                    part_len2 = n / parts_num;
-                    for (i = 0; i < parts_num; ++i){
-                        query.setLength(0);
-                        subject.setLength(0);
-                        query.append(p1.substring(i * part_len1, Math.min(m, (i + 1) * part_len1)));
-                        subject.append(p2.substring(i * part_len2, Math.min(n, (i + 1) * part_len2)));
-                        s_aligner.align(query, subject );
-                        if (s_aligner.get_score() > 0){
-                            score += s_aligner.get_matches();
-                            p_score += s_aligner.get_max_i();
-                            //score += s_aligner.get_score();
-                            //p_score += s_aligner.perfect_score(query);
-                        }
-                    }
-                } else {
+            if (n > MAX_ALIGNMENT_LENGTH){
+                parts_num = (n / MAX_ALIGNMENT_LENGTH) + (n % MAX_ALIGNMENT_LENGTH == 0 ? 0 : 1);
+                part_len1 = m / parts_num;
+                part_len2 = n / parts_num;
+                for (i = 0; i < parts_num; ++i){
                     query.setLength(0);
                     subject.setLength(0);
-                    query.append(p1);
-                    subject.append(p2);
-                    s_aligner.align(query, subject);
-                    if (s_aligner.get_score() > 0){
-                        score = s_aligner.get_matches();
-                        p_score = s_aligner.get_max_i();
-                        //score = s_aligner.get_score();
-                        //p_score = s_aligner.perfect_score(query);
-                    }
+                    query.append(p1.substring(i * part_len1, Math.min(m, (i + 1) * part_len1)));
+                    subject.append(p2.substring(i * part_len2, Math.min(n, (i + 1) * part_len2)));
+                    aligner.align(query, subject );
+                    score += aligner.get_score();
+                    p_score += aligner.perfect_score(query);
                 }
-            /*}else{
+            } else {
+                query.setLength(0);
                 subject.setLength(0);
+                query.append(p1);
                 subject.append(p2);
-                for (i = 0; i < m && start < n; )
-                {
-                    query.setLength(0);
-                    query.append(p1.substring(i, Math.min(m, i + part_len)));
-                    l_aligner.align(query, subject, start);
-                    if (l_aligner.get_score() > 0){//s * 100.0 / p > threshold){
-                        score += l_aligner.get_matches(start);
-                        p_score += l_aligner.get_max_i();//query.length();
-                        start = start + l_aligner.get_max_j();
-                        i += l_aligner.get_max_i();
-                    } else
-                        i += part_len;
-                }
-            }*/
+                aligner.align(query, subject );
+                score = aligner.get_score();
+                p_score = aligner.perfect_score(query);
+            }
             return score * 100.0 / p_score;
         }
     }    
@@ -1009,7 +976,7 @@ public class ProteomeLayer {
             es.execute(new Generate_proteins());
             es.execute(new Find_intersections(num_proteins));
             for(int i = 1; i <= THREADS - 2; i++)
-                es.execute(new Find_similarities(i));;
+                es.execute(new Find_similarities());;
             es.execute(new Write_similarities());
             es.shutdown();
             es.awaitTermination(10, TimeUnit.DAYS);        
