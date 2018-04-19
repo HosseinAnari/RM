@@ -18,11 +18,9 @@ public class BoundedLocalSequenceAlignment {
     private long left[][];
     private StringBuilder seq1;
     private StringBuilder seq2;
-    private StringBuilder subject;
-    private StringBuilder query;
-    StringBuilder cigar;
-    Stack<Character> operation_stack;
-    Stack<Integer> count_stack;
+    private StringBuilder cigar;
+    private Stack<Character> operation_stack;
+    private Stack<Integer> count_stack;
     private  long score;
     private int GAP_OPEN;
     private int GAP_EXT;
@@ -46,8 +44,6 @@ public class BoundedLocalSequenceAlignment {
         MAX_LENGTH = max_len;
         MAX_BOUND = max_bound;
         TYPE = type;
-        query = new StringBuilder();
-        subject = new StringBuilder();
     // initialize matrixes
         matrix = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
         direction = new char[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
@@ -71,8 +67,10 @@ public class BoundedLocalSequenceAlignment {
             }
         if (TYPE == 'N')
             initialize_NUCC_matrix();
-        else
+        else if (TYPE == 'P')
             initialize_BLOSUM_matrix();
+        else
+            System.out.println("Aligner tpre should be N or P");
         
         /*seq1 = new StringBuilder("AATCCCTAAACCCTAAACCGGTTTCTCTGGTTGAAAAT");
         seq2 = new StringBuilder("TTAATCCTTAAATCCCTAAACCCTAAACCGGTTTCTCTGGTTGAAAATCATTGCGTAT");
@@ -1040,6 +1038,8 @@ public class BoundedLocalSequenceAlignment {
      */
     public String get_alignment() {
         int i, j;
+        StringBuilder subject = new StringBuilder();
+        StringBuilder query = new StringBuilder();
         subject.setLength(0);
         query.setLength(0);
         i = max_i;
@@ -1208,7 +1208,7 @@ public class BoundedLocalSequenceAlignment {
      * @param p2 The second protein
      * @return 
      */
-    public long perfect_score_seq1(String seq) {
+    public long perfect_score(String seq) {
         char ch;
         int i;
         long score = 0;

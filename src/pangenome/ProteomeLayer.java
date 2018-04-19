@@ -5,7 +5,7 @@
  */
 package pangenome;
 
-import alignment.ProteinAlignment;
+import alignment.LocalSequenceAlignment;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -39,7 +39,6 @@ import static pangenome.GenomeLayer.getFolderSize;
 
 import static pantools.Pantools.GRAPH_DATABASE_PATH;
 import static pantools.Pantools.RelTypes;
-import static pantools.Pantools.graphDb;
 import static pantools.Pantools.labels;
 import static pantools.Pantools.startTime;
 import static pantools.Pantools.MAX_TRANSACTION_SIZE;
@@ -66,6 +65,7 @@ import static pantools.Pantools.pangenome_label;
  * University, Netherlands
  */
 public class ProteomeLayer {
+    private GraphDatabaseService graphDb;
     private int PEPTIDE_SIZE = 6;
     private int MAX_INTERSECTIONS;
     private int MAX_KMER_FREQ;
@@ -116,6 +116,7 @@ public class ProteomeLayer {
         public void run() {
             ResourceIterator<Node>  proteins_iterator;
             try(Transaction tx = graphDb.beginTx()){
+                proteins.clear();
                 pangenome_node = graphDb.findNodes(pangenome_label).next();
                 proteins_iterator = graphDb.findNodes(mRNA_label);
                 while (proteins_iterator.hasNext())
@@ -365,9 +366,9 @@ public class ProteomeLayer {
         int processed = 0;
         StringBuilder query;
         StringBuilder subject;
-        ProteinAlignment aligner;
+        LocalSequenceAlignment aligner;
         public Find_similarities() {
-            aligner = new ProteinAlignment(GAP_OPEN, GAP_EXT,MAX_ALIGNMENT_LENGTH);
+            aligner = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT,MAX_ALIGNMENT_LENGTH, 'P');
             query = new StringBuilder();
             subject = new StringBuilder();
         }
@@ -1025,33 +1026,6 @@ public class ProteomeLayer {
         }
     }
         
-    /**
-     * The similarity score of the shorter protein with itself  
-     * @param aligner The protein aligner object
-     * @param p1 The first protein
-     * @param p2 The second protein
-     * @return 
-     */
-    private long perfect_score(ProteinAlignment aligner, String p1, String p2) {
-        char match;
-        int i, len1, len2;
-        long score;
-        len1 = p1.length();
-        len2 = p2.length();
-        if (len1 < len2){
-            for (score = 0, i = 0; i < len1; ++i) {
-                match = p1.charAt(i);
-                score += aligner.match[match][match];
-            }
-        } else {
-            for (score = 0, i = 0; i < len2; ++i) {
-                match = p2.charAt(i);
-                score += aligner.match[match][match];
-            }  
-        }
-        return score;
-    }
-   
     /**
      * Shuts down the graph database if the program halts unexpectedly.
      * 

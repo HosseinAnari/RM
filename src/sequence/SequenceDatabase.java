@@ -34,13 +34,13 @@ import static pantools.Pantools.sequence_label;
  */
 public class SequenceDatabase {
 
-    private final String INFO_FILE = "/genomes.info";
-    private final String DB_FILE = "/genomes.db";
+    private final String INFO_FILE = "/sequences.info";
+    private final String DB_FILE = "/sequences.db";
     public long num_bytes;
     public int num_genomes;
     public int num_sequences[];        // Number of sequences in each genome    
     public String[][] sequence_titles; // Name of sequences for each genome
-    public String[][] sequence_qualities; // FASTQ quality strings
+    //public String[][] sequence_qualities; // FASTQ quality strings
     public String[] genome_names;     // Paths to the genome FASTA files
     public long genome_length[];    // Length of sequences for each genome
     public long sequence_length[][];    // Length of sequences for each genome
@@ -89,6 +89,7 @@ public class SequenceDatabase {
      */
     public SequenceDatabase(String path) {
         int g, s, k;
+        String[] fields;
         BufferedReader in;
         db_path = path;
         initalize();
@@ -99,7 +100,7 @@ public class SequenceDatabase {
             genome_names = new String[num_genomes + 1];
             genome_length = new long[num_genomes + 1];
             sequence_titles = new String[num_genomes + 1][];
-            sequence_qualities = new String[num_genomes + 1][];
+            //sequence_qualities = new String[num_genomes + 1][];
             sequence_length = new long[num_genomes + 1][];
             sequence_offset = new long[num_genomes + 1][];
             sequence_start = new long[num_genomes + 1][];
@@ -109,16 +110,18 @@ public class SequenceDatabase {
                 genome_length[g] = Long.valueOf(in.readLine().split(":")[1]);
                 num_sequences[g] = Integer.parseInt(in.readLine().split(":")[1]);
                 sequence_titles[g] = new String[num_sequences[g] + 1];
-                sequence_qualities[g] = new String[num_sequences[g] + 1];
+                //sequence_qualities[g] = new String[num_sequences[g] + 1];
                 sequence_length[g] = new long[num_sequences[g] + 1];
                 sequence_offset[g] = new long[num_sequences[g] + 1];
                 sequence_start[g] = new long[num_sequences[g] + 1];
+                in.readLine(); // skip the top row
                 for (s = 1; s <= num_sequences[g]; ++s) {
-                    sequence_titles[g][s] = in.readLine().split(":")[1];
-                    sequence_qualities[g][s] = in.readLine().split(":")[1];
-                    sequence_length[g][s] = Long.valueOf(in.readLine().split(":")[1]);
-                    sequence_offset[g][s] = Long.valueOf(in.readLine().split(":")[1]);
-                    sequence_start[g][s] = Long.valueOf(in.readLine().split(":")[1]);
+                    fields = in.readLine().split("\t");
+                    sequence_titles[g][s] = fields[0];
+                    sequence_length[g][s] = Long.valueOf(fields[1]);
+                    sequence_offset[g][s] = Long.valueOf(fields[2]);
+                    sequence_start[g][s] = Long.valueOf(fields[3]);
+                    //sequence_qualities[g][s] = fields[4];
                 }
             }
             in.close();
@@ -160,7 +163,7 @@ public class SequenceDatabase {
         try {
             in = new BufferedReader(new FileReader(genome_paths_file));
             while (in.ready()) {
-                line = in.readLine().trim();
+                line = in.readLine();
                 if (line.equals("")) {
                     continue;
                 }
@@ -175,7 +178,7 @@ public class SequenceDatabase {
         genome_names = new String[num_genomes + 1];
         genome_length = new long[num_genomes + 1];
         sequence_titles = new String[num_genomes + 1][];
-        sequence_qualities = new String[num_genomes + 1][];
+        //sequence_qualities = new String[num_genomes + 1][];
         sequence_length = new long[num_genomes + 1][];
         sequence_offset = new long[num_genomes + 1][];
         sequence_start = new long[num_genomes + 1][];
@@ -191,15 +194,15 @@ public class SequenceDatabase {
                 file_type = fields[fields.length - 1].toLowerCase();
                 if (file_type.equals("fasta") || file_type.equals("fa") || file_type.equals("fna") || file_type.equals("fn")){
                     while (in.ready()) {
-                        line = in.readLine().trim();
+                        line = in.readLine();
                         if (line.equals("")) 
                             continue;
-                        if (line.charAt(0) == '>' || line.charAt(0) == '+') 
+                        if (line.charAt(0) == '>') // || line.charAt(0) == '+'
                             num_sequences[g]++;
                     }
                 }else if (file_type.equals("fastq") || file_type.equals("fq") || file_type.equals("fnq") || file_type.equals("q")){
                     while (in.ready()) {
-                        line = in.readLine().trim();
+                        line = in.readLine();
                         if (line.equals(""))
                             continue;
                         num_sequences[g]++;
@@ -215,7 +218,7 @@ public class SequenceDatabase {
                 System.exit(1);
             }
             sequence_titles[g] = new String[num_sequences[g] + 1];
-            sequence_qualities[g] = new String[num_sequences[g] + 1];
+            //sequence_qualities[g] = new String[num_sequences[g] + 1];
             sequence_length[g] = new long[num_sequences[g] + 1];
             sequence_offset[g] = new long[num_sequences[g] + 1];
             sequence_start[g] = new long[num_sequences[g] + 1];
@@ -243,7 +246,7 @@ public class SequenceDatabase {
             genome_names = new String[num_genomes + 1];
             genome_length = new long[num_genomes + 1];
             sequence_titles = new String[num_genomes + 1][];
-            sequence_qualities = new String[num_genomes + 1][];
+            //sequence_qualities = new String[num_genomes + 1][];
             sequence_length = new long[num_genomes + 1][];
             sequence_offset = new long[num_genomes + 1][];
             sequence_start = new long[num_genomes + 1][];
@@ -253,14 +256,14 @@ public class SequenceDatabase {
                 genome_names[g] = (String) gen_node.getProperty("path");
                 num_sequences[g] = (int) gen_node.getProperty("num_sequences");
                 sequence_titles[g] = new String[num_sequences[g] + 1];
-                sequence_qualities[g] = new String[num_sequences[g] + 1];
+                //sequence_qualities[g] = new String[num_sequences[g] + 1];
                 sequence_length[g] = new long[num_sequences[g] + 1];
                 sequence_offset[g] = new long[num_sequences[g] + 1];
                 sequence_start[g] = new long[num_sequences[g] + 1];
                 for (s = 1; s <= num_sequences[g]; ++s) {
                     seq_node = graphDb.findNode(sequence_label, "identifier", g + "_" + s);
                     sequence_titles[g][s] = (String) seq_node.getProperty("title");
-                    sequence_qualities[g][s] = (String) seq_node.getProperty("quality","*");
+                    //sequence_qualities[g][s] = (String) seq_node.getProperty("quality","*");
                     sequence_length[g][s] = (long) seq_node.getProperty("length");
                     sequence_offset[g][s] = (long) seq_node.getProperty("offset");
                     sequence_start[g][s] = num_bytes;
@@ -306,9 +309,9 @@ public class SequenceDatabase {
         BufferedReader in;
         byte_number = previous_num_genomes == 0 ? 0 : num_bytes;
         initalize();
-        System.out.println("Reading " + (num_genomes - previous_num_genomes) + " genome(s)...");
         try {
             for (g = previous_num_genomes + 1; g <= num_genomes; ++g) {
+                System.out.println("Reading " + genome_names[g] + " ...");
                 in = new BufferedReader(new FileReader(genome_names[g]));
                 fields = genome_names[g].split("\\.");
                 file_type = fields[fields.length - 1].toLowerCase();
@@ -317,14 +320,13 @@ public class SequenceDatabase {
                     sequence_offset[g][0] = 0;
                     sequence_length[g][0] = 0;
                     while (in.ready()) {
-                        line = in.readLine().trim();
-                        if (line.equals("")) {
+                        line = in.readLine();
+                        if (line.equals("")) 
                             continue;
-                        }
                         if (line.charAt(0) == '>') {
                             ++s;
                             sequence_titles[g][s] = line.substring(1);
-                            sequence_qualities[g][s] = "*";
+                            //sequence_qualities[g][s] = "*";
                             sequence_offset[g][s] = sequence_offset[g][s - 1] + sequence_length[g][s - 1];
                             if (size % 2 == 1) {
                                 ++size;
@@ -346,7 +348,9 @@ public class SequenceDatabase {
                     sequence_length[g][0] = 0;
                     for (s = 1; in.ready(); ++s) {
                     // read title    
-                        line = in.readLine().trim();
+                        line = in.readLine();
+                        if (line.equals(""))
+                            continue;
                         sequence_titles[g][s] = line.substring(1);
                         sequence_offset[g][s] = sequence_offset[g][s - 1] + sequence_length[g][s - 1];
                         if (size % 2 == 1) {
@@ -354,14 +358,15 @@ public class SequenceDatabase {
                         }
                         sequence_start[g][s] = num_bytes + size / 2;
                     // read sequence
-                        line = in.readLine().trim();
+                        line = in.readLine();
                         sequence_length[g][s] += line.length();
                         genome_length[g] += line.length();
                         size += line.length();
                     // read +    
                         in.readLine();
                     // read quality    
-                        sequence_qualities[g][s] = in.readLine().trim();
+                        in.readLine();
+                        //sequence_qualities[g][s] = "*";
                     }
                     if (size % 2 == 1)
                         ++size;
@@ -395,7 +400,7 @@ public class SequenceDatabase {
                     havecarry = false;
                     s = 0;
                     while (in.ready()) {
-                        line = in.readLine().trim().toUpperCase();
+                        line = in.readLine().toUpperCase();
                         if (line.equals("")) {
                             continue;
                         }
@@ -439,7 +444,7 @@ public class SequenceDatabase {
                         }
                         havecarry = false;
                     //read sequence    
-                        line = in.readLine().trim().toUpperCase();
+                        line = in.readLine().toUpperCase();
                         len = line.length();
                         havecarry = (len % 2 == 1);
                         if (havecarry) {
@@ -507,13 +512,14 @@ public class SequenceDatabase {
         int g, s, i, previous_num_genomes = 0;
         BufferedReader in;
         String line;
+        String[] fields;
         List<String> genome_list = new LinkedList();
         initalize();
         try {
             // count number of new genomes
             in = new BufferedReader(new FileReader(genome_paths_file));
             while (in.ready()) {
-                line = in.readLine().trim();
+                line = in.readLine();
                 if (line.equals("")) {
                     continue;
                 }
@@ -527,7 +533,7 @@ public class SequenceDatabase {
             genome_names = new String[num_genomes + 1];
             genome_length = new long[num_genomes + 1];
             sequence_titles = new String[num_genomes + 1][];
-            sequence_qualities = new String[num_genomes + 1][];
+            //sequence_qualities = new String[num_genomes + 1][];
             sequence_length = new long[num_genomes + 1][];
             sequence_offset = new long[num_genomes + 1][];
             sequence_start = new long[num_genomes + 1][];
@@ -537,16 +543,18 @@ public class SequenceDatabase {
                 genome_length[g] = Long.valueOf(in.readLine().split(":")[1]);
                 num_sequences[g] = Integer.parseInt(in.readLine().split(":")[1]);
                 sequence_titles[g] = new String[num_sequences[g] + 1];
-                sequence_qualities[g] = new String[num_sequences[g] + 1];
+                //sequence_qualities[g] = new String[num_sequences[g] + 1];
                 sequence_length[g] = new long[num_sequences[g] + 1];
                 sequence_offset[g] = new long[num_sequences[g] + 1];
                 sequence_start[g] = new long[num_sequences[g] + 1];
+                in.readLine(); // skip the top row
                 for (s = 1; s <= num_sequences[g]; ++s) {
-                    sequence_titles[g][s] = in.readLine().split(":")[1];
-                    sequence_qualities[g][s] = in.readLine().split(":")[1];
-                    sequence_length[g][s] = Long.valueOf(in.readLine().split(":")[1]);
-                    sequence_offset[g][s] = Long.valueOf(in.readLine().split(":")[1]);
-                    sequence_start[g][s] = Long.valueOf(in.readLine().split(":")[1]);
+                    fields = in.readLine().split("\t");
+                    sequence_titles[g][s] = fields[0];
+                    sequence_length[g][s] = Long.valueOf(fields[1]);
+                    sequence_offset[g][s] = Long.valueOf(fields[2]);
+                    sequence_start[g][s] = Long.valueOf(fields[3]);
+                    //sequence_qualities[g][s] = fields[4];
                 }
             }
             in.close();
@@ -557,7 +565,7 @@ public class SequenceDatabase {
                 // count number of sequences
                 in = new BufferedReader(new FileReader(genome_names[g]));
                 while (in.ready()) {
-                    line = in.readLine().trim();
+                    line = in.readLine();
                     if (line.equals("")) {
                         continue;
                     }
@@ -567,7 +575,7 @@ public class SequenceDatabase {
                 }
                 in.close();
                 sequence_titles[g] = new String[num_sequences[g] + 1];
-                sequence_qualities[g] = new String[num_sequences[g] + 1];
+                //sequence_qualities[g] = new String[num_sequences[g] + 1];
                 sequence_length[g] = new long[num_sequences[g] + 1];
                 sequence_offset[g] = new long[num_sequences[g] + 1];
                 sequence_start[g] = new long[num_sequences[g] + 1];
@@ -608,13 +616,9 @@ public class SequenceDatabase {
                 out.write("genome name:" + genome_names[g] + "\n");
                 out.write("genome length:" + genome_length[g] + "\n");
                 out.write("number_of_sequences:" + num_sequences[g] + "\n");
-                for (s = 1; s <= num_sequences[g]; ++s) {
-                    out.write("sequence title:" + sequence_titles[g][s] + "\n");
-                    out.write("sequence quality:" + sequence_qualities[g][s] + "\n");
-                    out.write("sequence length:" + sequence_length[g][s] + "\n");
-                    out.write("sequence offset:" + sequence_offset[g][s] + "\n");
-                    out.write("sequence start:" + sequence_start[g][s] + "\n");
-                }
+                out.write("sequence_title\tsequence_quality\tsequence_length\tsequence_offset\tsequence_start\n" );
+                for (s = 1; s <= num_sequences[g]; ++s) 
+                    out.write(sequence_titles[g][s] + "\t" + sequence_length[g][s] + "\t" + sequence_offset[g][s] + "\t" + sequence_start[g][s] + "\n");
             }
             out.close();
         } catch (IOException ioe) {

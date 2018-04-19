@@ -118,51 +118,43 @@ public class SequenceScanner {
         --position;
     }
 
-    
-    public boolean initialize_left_kmer(int start, int stop) {
-        if (DEBUG) System.out.println("initialize_left_kmer");
+    /*
+    * get a kmer from the sequence starting at "start".
+    * @param start The start position of the kmer
+    * @retutn The position of the first base after the kmer or
+    * MININT if the is no kmer at that position or
+    * The negative value of current position if it passess a degenerate region.
+    */
+    public int initialize_kmer(int start) {
+        if (DEBUG) 
+            System.out.println("initialize_kmer at " + start);
         int i;
         curr_kmer.reset();
         position = start - 1;
-        for (i = 0; i < K && position < stop; ++i) {
+        for (i = 0; i < K && position < get_sequence_length(); ++i) {
             if (get_code(1) > 3) {
                 next_position();
                 if (DEBUG) System.out.println("jump_forward");
-                jump_forward();
-                return false;
+                if (jump_forward())
+                    return -position; // success but passed a degenerate region
+                else
+                    return Integer.MIN_VALUE; // failed
             }
             next_position();
             curr_kmer.next_kmer(get_code(0));
         }
         if (DEBUG) System.out.println(curr_kmer.toString());
-        return true;
+        if (i == K)
+            return position; // success
+        else 
+            return Integer.MIN_VALUE; // failed
     }
-
-    public boolean initialize_right_kmer(int start, int stop) {
-        if (DEBUG) System.out.println("initialize_right_kmer min = " + start);
-        int i;
-        curr_kmer.reset();
-        position = stop + 1;
-        for (i = 0; i < K && position > start; ++i) {
-            if (get_code(-1) > 3) {
-                previous_position();
-                if (DEBUG) System.out.println("jump_backward");
-                jump_backward();
-                return false;
-            }
-            previous_position();
-            curr_kmer.prev_kmer(get_code(0));
-        }
-        if (DEBUG) System.out.println(curr_kmer.toString());
-        return true;
-    }    
-
 
     /**
      * Jump over an ambiguous region; at first, position points to the first position which degenerate starts, 
      * after jumping it points to the last base of the first K-mer after the ambiguous region. 
      */
-    public void jump_forward() {
+    public boolean jump_forward() {
         int j;
         int base_code = get_code(0);
         curr_kmer.reset();
@@ -182,34 +174,9 @@ public class SequenceScanner {
             }
         } while (base_code > 3 && !end_of_sequence());
         if (DEBUG) System.out.println(curr_kmer.toString());
+        return j == K; // got valid kmer
     }
 
-    /**
-     * Jump over an ambiguous region; at first, position points to the first position which degenerate starts, 
-     * after jumping it points to the last base of the first K-mer after the ambiguous region. 
-     */
-    public void jump_backward() {
-        int j;
-        int base_code = get_code(0);
-        curr_kmer.reset();
-        do {
-            while (base_code > 3 && !start_of_sequence()) {
-                previous_position();
-                base_code = get_code(0);
-            }
-            curr_kmer.prev_kmer(base_code);
-            for (j = 0; j < K - 1 && !start_of_sequence(); ++j) {
-                previous_position();
-                base_code = get_code(0);
-                if (base_code > 3) {
-                    break;
-                }
-                curr_kmer.prev_kmer(base_code);
-            }
-        } while (base_code > 3 && !start_of_sequence());
-        if (DEBUG) System.out.println(curr_kmer.toString());
-    }
-    
     /**
      * Returns the nucleotide at a specified genomic position.
      * @param g Genome number 
@@ -391,7 +358,7 @@ public class SequenceScanner {
     } 
     
     public void get_sequence_quality(StringBuilder quality, int g, int s) {
-        quality.append(database.sequence_qualities[g][s]);
+        //quality.append(database.sequence_qualities[g][s]);
     } 
 
     public void get_sequence_title(StringBuilder title, int g, int s) {

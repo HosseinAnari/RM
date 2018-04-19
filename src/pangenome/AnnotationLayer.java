@@ -33,20 +33,15 @@ import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import static org.neo4j.graphdb.factory.GraphDatabaseSettings.keep_logical_logs;
-import static pangenome.GenomeLayer.extract_sequence;
+import static pantools.Pantools.ANNOTATION_TYPE;
 
 import static pantools.Pantools.GENOME_DATABASE_PATH;
 import static pantools.Pantools.GRAPH_DATABASE_PATH;
 import static pantools.Pantools.FEATURE;
 import static pantools.Pantools.RelTypes;
 import static pantools.Pantools.labels;
-import static pantools.Pantools.genomeDb;
-import static pantools.Pantools.graphDb;
-import static pantools.Pantools.num_edges;
-import static pantools.Pantools.num_nodes;
 import static pantools.Pantools.labels;
 import static pantools.Pantools.startTime;
-import static pangenome.GenomeLayer.locate;
 import static pantools.Pantools.CDS_label;
 import static pantools.Pantools.GRAPH_DATABASE_PATH;
 import static pantools.Pantools.INDEX_DATABASE_PATH;
@@ -63,14 +58,12 @@ import static pantools.Pantools.exon_label;
 import static pantools.Pantools.feature_label;
 import static pantools.Pantools.gene_label;
 import static pantools.Pantools.genome_label;
-import static pantools.Pantools.graphDb;
-import static pantools.Pantools.indexDb;
 import static pantools.Pantools.intron_label;
 import static pantools.Pantools.mRNA_label;
 import static pantools.Pantools.pangenome_label;
 import static pantools.Pantools.rRNA_label;
 import static pantools.Pantools.reverse_complement;
-import static pantools.Pantools.scanner;
+import static pantools.Pantools.sequence_label;
 import static pantools.Pantools.startTime;
 import static pantools.Pantools.tRNA_label;
 import static pantools.Pantools.write_fasta;
@@ -84,6 +77,14 @@ import sequence.SequenceScanner;
  */
 public class AnnotationLayer {
     
+    private GraphDatabaseService graphDb;
+    private IndexDatabase indexDb;
+    private SequenceDatabase genomeDb;
+    private SequenceDatabase sequencingDb1;
+    private SequenceDatabase sequencingDb2;
+    private SequenceScanner genome_scanner;    
+    private SequenceScanner reads_scanner1;    
+    private SequenceScanner reads_scanner2;  
     private int num_proteins;
     private static char[] aminoacid_table;
     private static int[] binary;
@@ -162,7 +163,7 @@ public class AnnotationLayer {
         }
         Node annotation_node, genome_node;
         String[] fields;
-        String gff_path, line;
+        String annotation_file, line;
         int[] address = new int[4];
         int degree;
         BufferedWriter log_file;
@@ -175,51 +176,53 @@ public class AnnotationLayer {
                 System.out.println("Can not locate database node!");
                 System.exit(1);
             }
-            // Read the pangenome information    
             K_SIZE = (int) db_node.getProperty("k_mer_size");
-            num_nodes = (long) db_node.getProperty("num_nodes");
-            num_edges = (long) db_node.getProperty("num_edges");
             tx1.success();
         }
         startTime = System.currentTimeMillis();
         genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
         indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
-        scanner = new SequenceScanner(genomeDb, 1, genomeDb.num_genomes, 1, genomeDb.num_sequences[1], K_SIZE, indexDb.get_pre_len());
+        genome_scanner = new SequenceScanner(genomeDb, 1, genomeDb.num_genomes, 1, genomeDb.num_sequences[1], K_SIZE, indexDb.get_pre_len());
         num_proteins = 0;
         try{
-            BufferedReader gff_paths = new BufferedReader(new FileReader(PATH_TO_THE_ANNOTATIONS_FILE));
+            BufferedReader paths = new BufferedReader(new FileReader(PATH_TO_THE_ANNOTATIONS_FILE));
             log_file = new BufferedWriter(new FileWriter(PATH_TO_THE_PANGENOME_DATABASE + "/annotation.log"));
             if (! new File(PATH_TO_THE_PANGENOME_DATABASE + "/proteins").exists())
                 Files.createDirectory(Paths.get(PATH_TO_THE_PANGENOME_DATABASE + "/proteins"));
             System.out.println("genome\tgenes\tmRNAs\ttRNAs\trRNAs");
-            while (gff_paths.ready()) // for each gff file
+            while (paths.ready()) // for each gff file
             {
-                line = gff_paths.readLine().trim();
+                line = paths.readLine();
                 if (line.equals(""))
                     continue;
-                fields = line.split("\\s");
+                fields = line.split("\\s+");
                 address[0] = Integer.parseInt(fields[0]);
-                gff_path = fields[1];
-                if (! new File(gff_path).exists()){
-                    log_file.write("Genome "+address[0]+"'s GFF file not found.");
-                    System.out.println("Genome "+address[0]+"'s GFF file not found.");
+                annotation_file = fields[1];
+                if (! new File(annotation_file).exists()){
+                    log_file.write("Genome "+address[0]+"'s annotation file not found.");
+                    System.out.println("Genome "+address[0]+"'s annotation file not found.");
                     continue;
                 }
                 try (Transaction tx = graphDb.beginTx()) {
                     annotation_node = graphDb.createNode(annotation_label);
-                    genome_node = graphDb.findNodes(genome_label,"number",address[0]).next();
+                    genome_node = graphDb.findNode(genome_label,"number",address[0]);
+                    //genome_node = graphDb.findNodes(genome_label,"number",address[0]).next();
                     annotation_node.createRelationshipTo(genome_node, RelTypes.annotates);
                     degree = genome_node.getDegree(RelTypes.annotates, Direction.INCOMING);
                     annotation_node.setProperty("date", new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new Date()));
-                    annotation_node.setProperty("path", gff_path);
+                    annotation_node.setProperty("path", annotation_file);
                     annotation_node.setProperty("genome", address[0]);
                     annotation_node.setProperty("number", degree);
                     annotation_node.setProperty("identifier", address[0] + "_" + degree);
+                    annotation_node.setProperty("type", ANNOTATION_TYPE);
                     tx.success();
                 }
-                parse_gff(address, address[0] + "_" + degree, log_file, gff_path);
+                if (ANNOTATION_TYPE.equals("gff"))
+                    parse_gff(address, address[0] + "_" + degree, log_file, annotation_file);
+                else if (ANNOTATION_TYPE.equals("gbk"))
+                    parse_gbk(address, address[0] + "_" + degree, log_file, annotation_file);
             } // for genomes
-            gff_paths.close();
+            paths.close();
             log_file.close();
         } catch (IOException ioe) {
             System.out.println("Failed to open " + PATH_TO_THE_ANNOTATIONS_FILE);
@@ -243,9 +246,9 @@ public class AnnotationLayer {
 
     private void parse_gff(int[] address, String annotation_id, BufferedWriter log_file, String gff_path){
         int i, trsc, num_genes, num_mRNAs, num_tRNAs, num_rRNAs, feature_len, offset;
-        long seq_len;
+        long seq_len = -1;
         String sequence_id, current_sequence_id=null, attribute;
-        Node gene_node, rna_node, feature_node, parent_node = null;
+        Node seq_node = null, gene_node, rna_node, feature_node, parent_node = null;
         Relationship rel;
         String[] fields,parent_ids;
         String strand, line, ID;
@@ -260,7 +263,7 @@ public class AnnotationLayer {
             {
                 try (Transaction tx2 = graphDb.beginTx()) {
                     for (trsc = 0; trsc < MAX_TRANSACTION_SIZE && in.ready(); ++trsc) {
-                        line = in.readLine().trim();
+                        line = in.readLine();
                         if (line.equals("") || line.charAt(0) == '#') // if line is empty or a comment skip it
                             continue;
                         if (line.contains("\t")){
@@ -268,7 +271,7 @@ public class AnnotationLayer {
                             attribute = fields[fields.length - 1];
                         } else {
                             //log_file.write("This line is not tab-delimited and is split by whitespaces: \n" + line + "\n"); 
-                            fields = line.split("\\s");
+                            fields = line.split("\\s+");
                             attr.setLength(0);
                             for (i = 7; i < fields.length; ++i)
                                 attr.append(fields[i]).append(" ");
@@ -283,20 +286,22 @@ public class AnnotationLayer {
                         // find the sequence number according to the sequence id in the gff file
                         if ( ! sequence_id.equals(current_sequence_id) ) {
                             address[1] = find_sequence(sequence_id, address[0]);
+                            if (address[1] == -1){// if sequence is not uniquely determined
+                                log_file.write("Sequence ID = "+sequence_id+" missed in genome "+address[0]+"\n"); // usually organal genes
+                                continue;
+                            } else {
+                                seq_node = graphDb.findNode(sequence_label, "number", address[1]);
+                                seq_len = genomeDb.sequence_length[address[0]][address[1]];
+                            }
+                            if(address[2] > seq_len) {
+                                log_file.write("Position "+address[2] + " is out of range 1-"+seq_len+".\n");
+                                continue;
+                            }
+                            if(address[3] > seq_len) {
+                                log_file.write("Position "+address[3] + " is out of range 1-"+seq_len+".\n");
+                                continue;
+                            }
                             current_sequence_id = sequence_id;
-                        }
-                        if (address[1] == -1){// if sequence is not uniquely determined
-                            log_file.write("Sequence ID = "+sequence_id+" missed in genome "+address[0]+"\n"); // usually organal genes
-                            continue;
-                        }
-                        seq_len = genomeDb.sequence_length[address[0]][address[1]];
-                        if(address[2] > seq_len) {
-                            log_file.write("Position "+address[2] + " is out of range 1-"+seq_len+".\n");
-                            continue;
-                        }
-                        if(address[3] > seq_len) {
-                            log_file.write("Position "+address[3] + " is out of range 1-"+seq_len+".\n");
-                            continue;
                         }
                         feature_node = graphDb.createNode(feature_label);
                         feature_node.setProperty("address", address);
@@ -327,6 +332,7 @@ public class AnnotationLayer {
                         if (fields[2].endsWith("gene")) {
                             // create new gene node
                             feature_node.addLabel(gene_label);
+                            seq_node.createRelationshipTo(feature_node, RelTypes.has);
                             gene_nodes.addFirst(new feature(feature_node, ID));
                             // adding gene_node id to the sequence node
                             //genes_list[address[0]][address[1]].add(gene_node.getId());
@@ -401,7 +407,144 @@ public class AnnotationLayer {
             System.out.println("Could not open " + gff_path + "!");
         }
     }
-    
+
+    private void parse_gbk(int[] address, String annotation_id, BufferedWriter log_file, String gbk_path){
+        int i, trsc, num_genes, num_mRNAs, num_tRNAs, num_rRNAs, feature_len, offset;
+        String sequence_id;
+        Node seq_node = null, gene_node = null, feature_node = null;
+        String[] fields, coordinates;
+        String strand, line;
+        StringBuilder protein = new StringBuilder();
+        IndexPointer start_ptr, stop_ptr;
+        num_genes = num_mRNAs = num_tRNAs = num_rRNAs = 0;
+        try (BufferedReader in = new BufferedReader(new FileReader(gbk_path))) {
+            // for each record of gff file
+            while (in.ready()) {
+                try (Transaction tx2 = graphDb.beginTx()) {
+                    for (trsc = 0; trsc < MAX_TRANSACTION_SIZE && in.ready(); ++trsc) {
+                        line = in.readLine();
+                        System.out.println(line);
+                        if (line.equals("") || line.charAt(0) == '#') // if line is empty or a comment skip it
+                            continue;
+                        if (line.startsWith("LOCUS")){
+                            fields = line.split("\\s+");
+                            sequence_id = fields[1];
+                            address[1] = find_sequence(sequence_id, address[0]);
+                            if (address[1] == -1){
+                                System.err.println("Failed to find Sequence ID = "+sequence_id+" in genome "+address[0]+"\n"); // usually organal genes
+                                 System.exit(1);
+                            } else
+                                seq_node = graphDb.findNode(sequence_label, "number", address[1]);
+                        } else {
+                            if(!line.startsWith("                     ")){
+                                if(line.startsWith("     gene")){
+                                    fields = line.split("\\s+");
+                                    if (fields[2].startsWith("complement")){
+                                        strand = "-";
+                                        coordinates = fields[2].split("\\.\\.");
+                                        address[2] = Integer.parseInt(coordinates[0].substring(11));
+                                        address[3] = Integer.parseInt(coordinates[1].substring(0, coordinates[1].length() - 1));
+                                    } else {
+                                        strand = "+";
+                                        coordinates = fields[2].split("\\.\\.");
+                                        address[2] = Integer.parseInt(coordinates[0]);
+                                        address[3] = Integer.parseInt(coordinates[1]);
+                                    }
+                                    feature_len = address[3] - address[2] + 1;
+                                    gene_node = graphDb.createNode(feature_label, gene_label);
+                                    gene_node.setProperty("address", address);
+                                    gene_node.setProperty("strand", strand);
+                                    gene_node.setProperty("length", feature_len);
+                                    gene_node.setProperty("type", fields[1]);
+                                    gene_node.setProperty("annotation_id", annotation_id);
+                                    gene_node.setProperty("genome",address[0]);
+                                    ++num_genes;
+                                    seq_node.createRelationshipTo(gene_node, RelTypes.has);
+                                } else if(line.startsWith("     mRNA")){
+                                    fields = line.split("\\s+");
+                                    strand = fields[2].startsWith("complement") ? "-" : "+";
+                                    feature_len = (int)gene_node.getProperty("length");
+                                    feature_node = graphDb.createNode(feature_label, mRNA_label);
+                                    feature_node.setProperty("address", gene_node.getProperty("address"));
+                                    feature_node.setProperty("strand", strand);
+                                    feature_node.setProperty("length", feature_len);
+                                    feature_node.setProperty("type", fields[1]);
+                                    feature_node.setProperty("annotation_id", annotation_id);
+                                    feature_node.setProperty("genome",address[0]);
+                                    gene_node.createRelationshipTo(feature_node, RelTypes.codes_for);
+                                    ++num_mRNAs;
+                                } else if(line.startsWith("     tRNA")){
+                                    fields = line.split("\\s+");
+                                    strand = fields[2].startsWith("complement") ? "-" : "+";
+                                    coordinates = fields[2].split("..");
+                                    address[2] = Integer.parseInt(coordinates[0].substring(10));
+                                    address[3] = Integer.parseInt(coordinates[1].substring(0, coordinates[1].length() - 2));
+                                    feature_len = address[3] - address[2] + 1;
+                                    gene_node = feature_node = graphDb.createNode(feature_label, tRNA_label);
+                                    feature_node.setProperty("address", address);
+                                    feature_node.setProperty("strand", strand);
+                                    feature_node.setProperty("length", feature_len);
+                                    feature_node.setProperty("type", fields[1]);
+                                    feature_node.setProperty("annotation_id", annotation_id);
+                                    feature_node.setProperty("genome",address[0]);
+                                    gene_node.createRelationshipTo(feature_node, RelTypes.codes_for);
+                                    ++num_tRNAs;
+                                } else if(line.startsWith("     rRNA")){
+                                    fields = line.split("\\s+");
+                                    strand = fields[2].startsWith("complement") ? "-" : "+";
+                                    coordinates = fields[2].split("..");
+                                    address[2] = Integer.parseInt(coordinates[0].substring(10));
+                                    address[3] = Integer.parseInt(coordinates[1].substring(0, coordinates[1].length() - 2));
+                                    feature_len = address[3] - address[2] + 1;
+                                    gene_node = feature_node = graphDb.createNode(feature_label, rRNA_label);
+                                    feature_node.setProperty("address", address);
+                                    feature_node.setProperty("strand", strand);
+                                    feature_node.setProperty("length", feature_len);
+                                    feature_node.setProperty("type", fields[1]);
+                                    feature_node.setProperty("annotation_id", annotation_id);
+                                    feature_node.setProperty("genome",address[0]);
+                                    gene_node.createRelationshipTo(feature_node, RelTypes.codes_for);
+                                    ++num_rRNAs;
+                                } 
+                            } else {
+                                    if(line.startsWith("                     /gene"))
+                                        feature_node.setProperty("id", line.substring(26));
+                                    else if(line.startsWith("                     /locus_tag"))
+                                        feature_node.setProperty("name", line.substring(31));
+                                    else if(line.startsWith("                     /protein_id"))
+                                        feature_node.setProperty("protein_ID", line.substring(32));
+                                    else if(line.startsWith("                     /translation")){
+                                            protein.setLength(0);
+                                            protein.append(line.split("/translation=")[1].replaceAll("\"", ""));
+                                            while (in.ready()){
+                                                line = in.readLine().trim();
+                                                if (line.endsWith("\"")){
+                                                    protein.append(line.replaceAll("\"", ""));
+                                                    break;
+                                                } else
+                                                    protein.append(line);
+                                            }
+                                            feature_node.setProperty("protein", protein.toString());
+                                            feature_node.setProperty("protein_length", protein.length());
+                                    }
+                            }
+                        }
+                        if (trsc % 987 == 1)
+                            System.out.print("\r" + address[0] + "\t" + num_genes + "\t" + num_mRNAs + "\t" + num_tRNAs + "\t" + num_rRNAs + "\t");
+                    }// for trsc
+                    tx2.success();
+                } // tx2
+            } // while lines
+            in.close();
+            System.out.println("\r" + address[0] + "\t" + num_genes + "\t" + num_mRNAs + "\t" + num_tRNAs + "\t" + num_rRNAs + "\t");
+            log_file.write("Genome "+address[0] + " : " + num_genes + " genes\t" + num_mRNAs + " mRNAs\t" + num_tRNAs + " tRNAs\t" + num_rRNAs + " rRNAs\n");
+            log_file.write("----------------------------------------------------\n");
+        }catch (IOException ioe) {
+            System.out.println(ioe.getMessage());
+            System.out.println("Could not open " + gbk_path + "!");
+        }
+    }
+
     /**
      * Gives the node of an annotated feature, given its ID
      * @param nodes A list of annotated features
@@ -460,7 +603,7 @@ public class AnnotationLayer {
                         address[2] -= 1;
                         address[3] -= 1;
                         gene_builder.setLength(0);
-                        scanner.get_sub_sequence(gene_builder, address, true);//(boolean)start_edge.getProperty("forward"));
+                        genome_scanner.get_sub_sequence(gene_builder, address, true);//(boolean)start_edge.getProperty("forward"));
                         if (gene_builder.length() == 0)
                             continue;
                         isoforms_num =0;
@@ -486,8 +629,8 @@ public class AnnotationLayer {
                                 if (!forward)
                                     reverse_complement(rna_builder);
                                 protein = translate(rna_builder);
+                                ++num_proteins;
                                 if (protein.length() > 0){
-                                    ++num_proteins;
                                     //if (num_proteins % 11 == 1)
                                     //    System.out.print("\rAdding protein sequences... " + num_proteins);
                                     mRNA_id = (String)mrna_node.getProperty("id");
@@ -529,7 +672,7 @@ public class AnnotationLayer {
                 if (fields[i].contains("="))
                     return fields[i].trim().split("=")[1];//.toLowerCase();
                 else
-                    return fields[i].trim().split("\\s")[1];//.toLowerCase();
+                    return fields[i].trim().split("\\s+")[1];//.toLowerCase();
             }                    
         return "";
     }
@@ -552,6 +695,7 @@ public class AnnotationLayer {
             sequence = -1;
         return sequence;
     }
+
 
     /**
      * Retrieves sequence of the genes sequence from the pangenome and stores them in a FASTA file. 
@@ -586,14 +730,14 @@ public class AnnotationLayer {
         genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
         indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
         K_SIZE = indexDb.get_K();
-        scanner = new SequenceScanner(genomeDb, 1, genomeDb.num_genomes, 1, genomeDb.num_sequences[1], K_SIZE, indexDb.get_pre_len());
+        genome_scanner = new SequenceScanner(genomeDb, 1, genomeDb.num_genomes, 1, genomeDb.num_sequences[1], K_SIZE, indexDb.get_pre_len());
         num_genomes = 0;
         feature_seq = new StringBuilder();
         BufferedWriter[] out = new BufferedWriter[genomeDb.num_genomes + 1];
         try {
             in = new BufferedReader(new FileReader(PATH_TO_THE_GENOME_NUMBERS_FILE));
             while (in.ready()) {
-                line = in.readLine().trim();
+                line = in.readLine();
                 if (line.equals("")) {
                     continue;
                 }
@@ -610,7 +754,7 @@ public class AnnotationLayer {
                 in = new BufferedReader(new FileReader(PATH_TO_THE_GENOME_NUMBERS_FILE));
                 // fill all the records in an array to be sorted    
                 for (i = 0; in.ready();) {
-                    line = in.readLine().trim();
+                    line = in.readLine();
                     if (line.equals("")) {
                         continue;
                     }
@@ -645,7 +789,7 @@ public class AnnotationLayer {
                             //extract_sequence(gene_seq, new IndexPointer(start.getId(), (boolean) rstart.getProperty("forward"), (int) rstart.getProperty("offset"),-1l), address, K);//
                             address[2] -= 1;
                             address[3] -= 1;
-                            scanner.get_sub_sequence(feature_seq, address, forward);
+                            genome_scanner.get_sub_sequence(feature_seq, address, forward);
                             //genomeDb=new sequence_database(pangenome_path+GENOME_DATABASE_PATH);
                             //if(gene_seq.toString().equals(genomeDb.get_sequence(genome, sequence, begin-1, end-begin+1, strand))
                             //|| gene_seq.toString().equals(genomeDb.get_sequence(genome, sequence, begin-1, end-begin+1, !strand)) )//gene_seq.length() == end-begin+1)//

@@ -1,22 +1,32 @@
 package alignment;
 
+import java.util.Stack;
+
 /**
  * Implements required functionalities for amino acid pairwise alignment 
  * 
  * @author Siavash Sheikhizadeh, Bioinformatics chairgroup, Wageningen
  * University, Netherlands
  */
-public class ProteinAlignment {
+public class LocalSequenceAlignment {
 
-    public int match[][];
+    private int match[][];
     private long matrix[][];
+    private char direction[][];
     private long up[][];
     private long left[][];
-    public int alignment_length;
-    public int MAX_LENGTH;
-    public int GAP_OPEN;
-    public int GAP_EXT;
-    public long score;
+    private StringBuilder seq1;
+    private StringBuilder seq2;
+    private StringBuilder cigar;
+    private Stack<Character> operation_stack;
+    private Stack<Integer> count_stack;
+    private int MAX_LENGTH;
+    private int GAP_OPEN;
+    private int GAP_EXT;
+    private int max_i;
+    private int max_j;
+    private long score;
+    private char TYPE;
     
     /**
      * The constructor of the class
@@ -24,29 +34,273 @@ public class ProteinAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public ProteinAlignment(int gap_open, int gap_ext, int max_length) {
+    public LocalSequenceAlignment(int gap_open, int gap_ext, int max_length, char type) {
         int i, j;
         MAX_LENGTH = max_length;
         GAP_OPEN = gap_open;
         GAP_EXT = gap_ext;
+        TYPE = type;
     // initialize matrixes
         matrix = new long[MAX_LENGTH+1][MAX_LENGTH+1];
+        direction = new char[MAX_LENGTH + 1][MAX_LENGTH + 1];
         up = new long[MAX_LENGTH+1][MAX_LENGTH+1];
         left = new long[MAX_LENGTH+1][MAX_LENGTH+1];
+        cigar = new StringBuilder();
+        operation_stack = new Stack();
+        count_stack = new Stack();
+        direction[0][0] = 'M';
         for (i = 1; i <= MAX_LENGTH; i++) {
                 up[i][0] = 0;
                 left[i][0] = Integer.MIN_VALUE;
                 matrix[i][0] = 0;
+                direction[i][0] = 'I';
             }
         for (j = 1; j <= MAX_LENGTH; j++) {
                 up[0][j] = Integer.MIN_VALUE;
                 left[0][j] = 0;
                 matrix[0][j] = 0;
+                direction[0][j] = 'D';
             } 
-        iniialize_BLOSUM62();
+        if (TYPE == 'N')
+            initialize_NUCC_matrix();
+        else if (TYPE == 'P')
+            initialize_BLOSUM_matrix();
+        else
+            System.out.println("Aligner tpre should be N or P");
     }
     
-    private void iniialize_BLOSUM62(){
+    public final void initialize_NUCC_matrix(){
+        match = new int[256][256];
+
+        match['A']['A'] = 5;
+        match['A']['T'] = -4;
+        match['A']['G'] = -4;
+        match['A']['C'] = -4;
+        match['A']['S'] = -4;
+        match['A']['W'] = 1;
+        match['A']['R'] = 1;
+        match['A']['Y'] = -4;
+        match['A']['K'] = -4;
+        match['A']['M'] = 1;
+        match['A']['B'] = -4;
+        match['A']['V'] = -1;
+        match['A']['H'] = -1;
+        match['A']['D'] = -1;
+        match['A']['N'] = -2;
+        match['T']['A'] = -4;
+        match['T']['T'] = 5;
+        match['T']['G'] = -4;
+        match['T']['C'] = -4;
+        match['T']['S'] = -4;
+        match['T']['W'] = 1;
+        match['T']['R'] = -4;
+        match['T']['Y'] = 1;
+        match['T']['K'] = 1;
+        match['T']['M'] = -4;
+        match['T']['B'] = -1;
+        match['T']['V'] = -4;
+        match['T']['H'] = -1;
+        match['T']['D'] = -1;
+        match['T']['N'] = -2;
+        match['G']['A'] = -4;
+        match['G']['T'] = -4;
+        match['G']['G'] = 5;
+        match['G']['C'] = -4;
+        match['G']['S'] = 1;
+        match['G']['W'] = -4;
+        match['G']['R'] = 1;
+        match['G']['Y'] = -4;
+        match['G']['K'] = 1;
+        match['G']['M'] = -4;
+        match['G']['B'] = -1;
+        match['G']['V'] = -1;
+        match['G']['H'] = -4;
+        match['G']['D'] = -1;
+        match['G']['N'] = -2;
+        match['C']['A'] = -4;
+        match['C']['T'] = -4;
+        match['C']['G'] = -4;
+        match['C']['C'] = 5;
+        match['C']['S'] = 1;
+        match['C']['W'] = -4;
+        match['C']['R'] = -4;
+        match['C']['Y'] = 1;
+        match['C']['K'] = -4;
+        match['C']['M'] = 1;
+        match['C']['B'] = -1;
+        match['C']['V'] = -1;
+        match['C']['H'] = -1;
+        match['C']['D'] = -4;
+        match['C']['N'] = -2;
+        match['S']['A'] = -4;
+        match['S']['T'] = -4;
+        match['S']['G'] = 1;
+        match['S']['C'] = 1;
+        match['S']['S'] = -1;
+        match['S']['W'] = -4;
+        match['S']['R'] = -2;
+        match['S']['Y'] = -2;
+        match['S']['K'] = -2;
+        match['S']['M'] = -2;
+        match['S']['B'] = -1;
+        match['S']['V'] = -1;
+        match['S']['H'] = -3;
+        match['S']['D'] = -3;
+        match['S']['N'] = -1;
+        match['W']['A'] = 1;
+        match['W']['T'] = 1;
+        match['W']['G'] = -4;
+        match['W']['C'] = -4;
+        match['W']['S'] = -4;
+        match['W']['W'] = -1;
+        match['W']['R'] = -2;
+        match['W']['Y'] = -2;
+        match['W']['K'] = -2;
+        match['W']['M'] = -2;
+        match['W']['B'] = -3;
+        match['W']['V'] = -3;
+        match['W']['H'] = -1;
+        match['W']['D'] = -1;
+        match['W']['N'] = -1;
+        match['R']['A'] = 1;
+        match['R']['T'] = -4;
+        match['R']['G'] = 1;
+        match['R']['C'] = -4;
+        match['R']['S'] = -2;
+        match['R']['W'] = -2;
+        match['R']['R'] = -1;
+        match['R']['Y'] = -4;
+        match['R']['K'] = -2;
+        match['R']['M'] = -2;
+        match['R']['B'] = -3;
+        match['R']['V'] = -1;
+        match['R']['H'] = -3;
+        match['R']['D'] = -1;
+        match['R']['N'] = -1;
+        match['Y']['A'] = -4;
+        match['Y']['T'] = 1;
+        match['Y']['G'] = -4;
+        match['Y']['C'] = 1;
+        match['Y']['S'] = -2;
+        match['Y']['W'] = -2;
+        match['Y']['R'] = -4;
+        match['Y']['Y'] = -1;
+        match['Y']['K'] = -2;
+        match['Y']['M'] = -2;
+        match['Y']['B'] = -1;
+        match['Y']['V'] = -3;
+        match['Y']['H'] = -1;
+        match['Y']['D'] = -3;
+        match['Y']['N'] = -1;
+        match['K']['A'] = -4;
+        match['K']['T'] = 1;
+        match['K']['G'] = 1;
+        match['K']['C'] = -4;
+        match['K']['S'] = -2;
+        match['K']['W'] = -2;
+        match['K']['R'] = -2;
+        match['K']['Y'] = -2;
+        match['K']['K'] = -1;
+        match['K']['M'] = -4;
+        match['K']['B'] = -1;
+        match['K']['V'] = -3;
+        match['K']['H'] = -3;
+        match['K']['D'] = -1;
+        match['K']['N'] = -1;
+        match['M']['A'] = 1;
+        match['M']['T'] = -4;
+        match['M']['G'] = -4;
+        match['M']['C'] = 1;
+        match['M']['S'] = -2;
+        match['M']['W'] = -2;
+        match['M']['R'] = -2;
+        match['M']['Y'] = -2;
+        match['M']['K'] = -4;
+        match['M']['M'] = -1;
+        match['M']['B'] = -3;
+        match['M']['V'] = -1;
+        match['M']['H'] = -1;
+        match['M']['D'] = -3;
+        match['M']['N'] = -1;
+        match['B']['A'] = -4;
+        match['B']['T'] = -1;
+        match['B']['G'] = -1;
+        match['B']['C'] = -1;
+        match['B']['S'] = -1;
+        match['B']['W'] = -3;
+        match['B']['R'] = -3;
+        match['B']['Y'] = -1;
+        match['B']['K'] = -1;
+        match['B']['M'] = -3;
+        match['B']['B'] = -1;
+        match['B']['V'] = -2;
+        match['B']['H'] = -2;
+        match['B']['D'] = -2;
+        match['B']['N'] = -1;
+        match['V']['A'] = -1;
+        match['V']['T'] = -4;
+        match['V']['G'] = -1;
+        match['V']['C'] = -1;
+        match['V']['S'] = -1;
+        match['V']['W'] = -3;
+        match['V']['R'] = -1;
+        match['V']['Y'] = -3;
+        match['V']['K'] = -3;
+        match['V']['M'] = -1;
+        match['V']['B'] = -2;
+        match['V']['V'] = -1;
+        match['V']['H'] = -2;
+        match['V']['D'] = -2;
+        match['V']['N'] = -1;
+        match['H']['A'] = -1;
+        match['H']['T'] = -1;
+        match['H']['G'] = -4;
+        match['H']['C'] = -1;
+        match['H']['S'] = -3;
+        match['H']['W'] = -1;
+        match['H']['R'] = -3;
+        match['H']['Y'] = -1;
+        match['H']['K'] = -3;
+        match['H']['M'] = -1;
+        match['H']['B'] = -2;
+        match['H']['V'] = -2;
+        match['H']['H'] = -1;
+        match['H']['D'] = -2;
+        match['H']['N'] = -1;
+        match['D']['A'] = -1;
+        match['D']['T'] = -1;
+        match['D']['G'] = -1;
+        match['D']['C'] = -4;
+        match['D']['S'] = -3;
+        match['D']['W'] = -1;
+        match['D']['R'] = -1;
+        match['D']['Y'] = -3;
+        match['D']['K'] = -1;
+        match['D']['M'] = -3;
+        match['D']['B'] = -2;
+        match['D']['V'] = -2;
+        match['D']['H'] = -2;
+        match['D']['D'] = -1;
+        match['D']['N'] = -1;
+        match['N']['A'] = -2;
+        match['N']['T'] = -2;
+        match['N']['G'] = -2;
+        match['N']['C'] = -2;
+        match['N']['S'] = -1;
+        match['N']['W'] = -1;
+        match['N']['R'] = -1;
+        match['N']['Y'] = -1;
+        match['N']['K'] = -1;
+        match['N']['M'] = -1;
+        match['N']['B'] = -1;
+        match['N']['V'] = -1;
+        match['N']['H'] = -1;
+        match['N']['D'] = -1;
+        match['N']['N'] = -1;
+
+    }
+
+    public final void initialize_BLOSUM_matrix(){
         match = new int[256][256];
         match['A']['A'] = 4;
         match['A']['R'] = -1;
@@ -670,6 +924,14 @@ public class ProteinAlignment {
         match['*']['Z'] = -4;
         match['*']['X'] = -4;
         match['*']['*'] = 1;
+        /*seq1 = new StringBuilder("CTCTTTATGAAGAAAAAAGTT");
+        seq2 = new StringBuilder("CTCTTTATGAAGATGAAGAAAAAAGTT");
+        this.align(seq1, seq2);
+        System.out.println(this.get_alignment());
+        calculate_cigar();
+        System.out.println(this.get_cigar());
+        System.out.println(this.get_score());
+        System.exit(0);*/
     }
 
     /**
@@ -678,21 +940,35 @@ public class ProteinAlignment {
      * @param s2 Second sequence
      * @return The similarity score
      */
-    public long align(StringBuilder s1, StringBuilder s2) {
+    public void align(StringBuilder s1, StringBuilder s2) {
         int i, j;
         int m = s1.length(), n = s2.length();
-        score = 0;
+        seq1 = s1;
+        seq2 = s2;
+        score = Integer.MIN_VALUE;
         for (i = 1; i <= m; i++) {
             for (j = 1; j <= n; j++) {
                 up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
                 left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
-                //matrix[i][j] = Math.max( match[s1.charAt(i-1)][s2.charAt(j-1)] + matrix[i - 1][j - 1] , Math.max( up[i][j] , left[i][j]) );
-                matrix[i][j] = match[s1.charAt(i-1)][s2.charAt(j-1)] + Math.max( matrix[i-1][j-1] , Math.max( up[i-1][j-1] , left[i-1][j-1]) );
-                if (matrix[i][j] > score)
+                if (matrix[i-1][j-1] > Math.max( up[i-1][j-1] , left[i-1][j-1]))
+                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i-1][j-1];
+                else if (left[i-1][j-1] > up[i-1][j-1])
+                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + left[i-1][j-1];
+                else
+                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + up[i-1][j-1];
+                if (matrix[i][j] > Math.max( up[i][j] , left[i][j]))
+                    direction[i][j] = 'M';
+                else if (left[i][j] > up[i][j])
+                    direction[i][j] = 'D';
+                else
+                    direction[i][j] = 'I';
+                if (matrix[i][j] >= score){
                     score = matrix[i][j];
+                    max_i = i;
+                    max_j = j;
+                }                
             }
         }
-        return score;
     }    
 
     /**
@@ -716,6 +992,90 @@ public class ProteinAlignment {
     public long get_score(){
         return score;
     }
+
+    public int calculate_cigar() {
+        int i, j, genomic_offset = 0, move_counts = 1, count;
+        char curr_move, prev_move, operation;
+        operation_stack.clear();
+        count_stack.clear();
+        cigar.setLength(0);
+        i = max_i;
+        j = max_j;
+        if (seq1.length() > max_i){
+            prev_move = 'M';
+            move_counts = seq1.length() - max_i;
+        } else {
+            prev_move = direction[i][j];
+            if (prev_move == 'I'){
+                i = i - 1;
+            }else if (prev_move == 'D')
+                j = j - 1;
+            else {
+                i = i - 1;
+                j = j - 1;
+            } 
+        }
+        while (i > 0 && j > 0) {
+            //System.out.println(i+" "+j+ " " +direction[i][j+1-i]);
+            curr_move = direction[i][j];
+            if (curr_move == 'I'){
+                i = i - 1;
+            }else if (curr_move == 'D')
+                j = j - 1;
+            else {
+                i = i - 1;
+                j = j - 1;
+            } 
+            if (prev_move == curr_move)
+                ++move_counts;
+            else{
+                operation_stack.push(prev_move);
+                count_stack.push(move_counts);
+                /*if (operation_stack.size() == 1 && prev_move == 'D'){ //Remove the deletion at the end of the read
+                    operation_stack.pop();
+                    score += (-GAP_OPEN + count_stack.pop());// make up for the penalties
+                } */
+                move_counts = 1;
+            }
+            prev_move = curr_move;
+        } 
+        if (i > 0){
+            //System.out.println(i);
+            if (prev_move == 'M')
+                move_counts += i;
+            else{
+                operation_stack.push(prev_move);
+                count_stack.push(move_counts);
+                prev_move = 'M';
+                move_counts = i; 
+            }
+            j = j - i;
+        }
+        operation_stack.push(prev_move);
+        count_stack.push(move_counts);
+        genomic_offset = j;
+
+        /*
+        // Avoid D at the start of cigar only for read alignment
+        if (j > 0){
+            operation_stack.push('D');
+            count_stack.push(j);
+        }
+        */
+
+        while (!operation_stack.isEmpty()){
+            operation = operation_stack.pop();
+            count = count_stack.pop();
+            cigar.append(count).append(operation);
+        }
+        //System.out.println(cigar);
+        return genomic_offset;
+    }
+   
+    public StringBuilder get_cigar(){
+        return cigar;
+    }
+    
 
     public double score(String s1, String s2) {
         int i, num = 0;

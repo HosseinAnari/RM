@@ -77,6 +77,7 @@ public final class IndexDatabase {
         int i, k;
         long p;
         try {
+            System.out.println("Mounting index " + index_path);
             pre_file = new RandomAccessFile(index_path + "/sorted.kmc_pre", "r");
             BufferedReader in = new BufferedReader(new FileReader(index_path + INFO_FILE));
             K = Integer.parseInt(in.readLine().split(":")[1]);
@@ -144,13 +145,14 @@ public final class IndexDatabase {
         long longest_scaffold = 0;
         String output;
         db_path = index_path;
+        System.out.println("Creating index " + index_path);
         try {
             Files.createDirectory(Paths.get(index_path));
             if (k == -1) // K is not given by the user, then calculate the optimal K
-                K = Math.round((float)((Math.log(0.002001) - Math.log(genomeDb.num_bytes))/Math.log(0.25)));
+                K = Math.round((float)((Math.log(0.002001) - Math.log(genomeDb.num_bytes))/Math.log(0.25))) - 2;
             else
                 K = k;
-            if (K % 2 == 0) // Even values make localization process problamatic
+            if (K % 2 == 0) // Even values are problamatic to localization process 
                 K += 1;
             System.out.println("Running KMC with K = " + K + " ...                      ");
             executeCommand("kmc -r -k" + K + " -t" + cores + " -m" + 
@@ -293,15 +295,16 @@ public final class IndexDatabase {
         ResourceIterator<Node> nodes_iterator;
         db_path = index_path;
         // move current index files to directory old_index
+        System.out.println("Updating index " + index_path);
         try {
             if (! new File(index_path+"/old_index").exists())
-                Files.createDirectory(Paths.get(index_path+"/old_index"));
+                Files.createDirectory(Paths.get(index_path+"old_index"));
             Files.move(Paths.get(index_path + "/sorted.kmc_pre"), Paths.get(index_path + "/old_index/sorted.kmc_pre"));
             Files.move(Paths.get(index_path + "/sorted.kmc_suf"), Paths.get(index_path + "/old_index/sorted.kmc_suf"));
             Files.move(Paths.get(index_path + "/pointers.db"), Paths.get(index_path + "/old_index/pointers.db"));
             Files.move(Paths.get(index_path + "/index.info"), Paths.get(index_path + "/old_index/index.info"));
         // load old_index
-            IndexDatabase old_index = new IndexDatabase(index_path + "/old_index");
+            IndexDatabase old_index = new IndexDatabase(index_path + "old_index");
         // make new index for new genomes
             System.out.println("Running KMC with K = " + old_index.K + " ...                      ");
             executeCommand("kmc -r -k" + old_index.K + " -t" + cores + " -m" + (Runtime.getRuntime().maxMemory() / 1073741824L) + 
@@ -659,7 +662,6 @@ public final class IndexDatabase {
         buff.put((byte) (canonical ? 0 : 1));
         write_long(buff, next_index, id_len);
     }
-
     
     /**
      * Reads the node id of a kmer from the index database.
@@ -732,7 +734,7 @@ public final class IndexDatabase {
         buff.position((int) (number * POINTER_LENGTH % ptr_parts_size[0]) + id_len + offset_len + 1);
         return read_long(buff, id_len);
     }
-    //,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
     public void put_next_index(long next_index, long number) {
         MappedByteBuffer buff = ptr_buff[(int) (number * POINTER_LENGTH / ptr_parts_size[0])];
         buff.position((int) (number * POINTER_LENGTH % ptr_parts_size[0]) + id_len + offset_len + 1);

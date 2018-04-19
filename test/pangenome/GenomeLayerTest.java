@@ -67,6 +67,7 @@ public class GenomeLayerTest {
         for (int i = 0; i < label_strings.length; ++i)
             labels.put(label_strings[i], label(label_strings[i]));
         GenomeLayer instance = new GenomeLayer();
+        K_SIZE = 11;
         PATH_TO_THE_GENOMES_FILE = test_directory + "sample_genomes_path.txt";
         PATH_TO_THE_PANGENOME_DATABASE = System.getProperty("user.home") + "/test/";
         instance.initialize_pangenome();
@@ -82,8 +83,9 @@ public class GenomeLayerTest {
     public void test2_Add() {
         System.out.println("Testing add:");
         GenomeLayer instance = new GenomeLayer();
+        K_SIZE = 11;
         PATH_TO_THE_GENOMES_FILE = test_directory + "sample_genomes_path_1.txt";
-        PATH_TO_THE_PANGENOME_DATABASE = System.getProperty("user.home") + "/cumulative_test/";
+        PATH_TO_THE_PANGENOME_DATABASE = System.getProperty("user.home") + "/cumulative_test";
         instance.initialize_pangenome();
         PATH_TO_THE_GENOMES_FILE = test_directory + "sample_genomes_path_2.txt";
         instance.add_genomes();
