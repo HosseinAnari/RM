@@ -25,8 +25,9 @@ public class LocalSequenceAlignment {
     private int GAP_EXT;
     private int max_i;
     private int max_j;
-    private long score;
+    private long similarity_score;
     private char TYPE;
+    private int offset;
     
     /**
      * The constructor of the class
@@ -943,9 +944,10 @@ public class LocalSequenceAlignment {
     public void align(StringBuilder s1, StringBuilder s2) {
         int i, j;
         int m = s1.length(), n = s2.length();
+        cigar.setLength(0);
         seq1 = s1;
         seq2 = s2;
-        score = Integer.MIN_VALUE;
+        similarity_score = Integer.MIN_VALUE;
         for (i = 1; i <= m; i++) {
             for (j = 1; j <= n; j++) {
                 up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
@@ -962,8 +964,8 @@ public class LocalSequenceAlignment {
                     direction[i][j] = 'D';
                 else
                     direction[i][j] = 'I';
-                if (matrix[i][j] >= score){
-                    score = matrix[i][j];
+                if (matrix[i][j] >= similarity_score){
+                    similarity_score = matrix[i][j];
                     max_i = i;
                     max_j = j;
                 }                
@@ -978,24 +980,38 @@ public class LocalSequenceAlignment {
      * @param p2 The second protein
      * @return 
      */
-    public long perfect_score(StringBuilder seq) {
+    public long perfect_score() {
             char ch;
             int i;
             long score = 0;
-            for (i = 0; i < seq.length(); ++i) {
-                ch = seq.charAt(i);
+            for (i = 0; i < seq1.length(); ++i) {
+                ch = seq1.charAt(i);
                 score += match[ch][ch];
             }
             return score;
         }   
     
-    public long get_score(){
-        return score;
+    public long get_match_score(String s1, String s2) {
+            int i;
+            long score = 0;
+            for (i = 0; i < s1.length(); ++i) {
+                score += match[s1.charAt(i)][s2.charAt(i)];
+            }
+            return score;
+        }   
+
+    public long get_similarity_score(){
+        return similarity_score;
     }
 
-    public int calculate_cigar() {
-        int i, j, genomic_offset = 0, move_counts = 1, count;
+    public long get_similarity_percentage(){
+        return similarity_score * 20 / seq1.length();
+    }
+    
+    public void calculate_cigar() {
+        int i, j, move_counts = 1, count;
         char curr_move, prev_move, operation;
+        offset = 0;
         operation_stack.clear();
         count_stack.clear();
         cigar.setLength(0);
@@ -1053,7 +1069,7 @@ public class LocalSequenceAlignment {
         }
         operation_stack.push(prev_move);
         count_stack.push(move_counts);
-        genomic_offset = j;
+        offset = j;
 
         /*
         // Avoid D at the start of cigar only for read alignment
@@ -1069,21 +1085,17 @@ public class LocalSequenceAlignment {
             cigar.append(count).append(operation);
         }
         //System.out.println(cigar);
-        return genomic_offset;
     }
    
-    public StringBuilder get_cigar(){
-        return cigar;
+    public String get_cigar(){
+        if (cigar.length() == 0)
+            calculate_cigar();
+        return cigar.toString();
     }
     
-
-    public double score(String s1, String s2) {
-        int i, num = 0;
-        for (i = 0; i < s1.length(); ++i)
-            if (s1.charAt(i) == s2.charAt(i))
-                ++num;
-        return num * 100.0 / s1.length();
-    }    
+    public int get_offset(){
+        return offset;
+    }
 
 
 }

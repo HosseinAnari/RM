@@ -7,8 +7,6 @@
 
 package pantools;
 
-import sequence.SequenceDatabase;
-import index.IndexDatabase;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -20,15 +18,12 @@ import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
-import static org.neo4j.graphdb.Label.label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.RelationshipType;
 import pangenome.AnnotationLayer;
 import pangenome.ProteomeLayer;
 import pangenome.GenomeLayer;
-import sequence.SequenceScanner;
 
 /**
  * Implements the main and shared functions. 
@@ -52,7 +47,6 @@ public class Pantools {
     public static String PATH_TO_THE_SECOND_SRA;
     public static String MAPPING_NAME = "genome";
     public static String FEATURE = "gene";
-    public static String ANNOTATION_TYPE = "gff";
     public static double INTERSECTION = 0.08;
     public static double CONTRAST = 8;
     public static double INFLATION = 10.8;
@@ -63,8 +57,8 @@ public class Pantools {
     public static int MAX_BOUND = 100;
     public static int MAX_ALIGNMENT_LENGTH = 1000;
     public static int MIN_BASE_QUALITY = 0;
-    public static int ALIGNMENT_MODE = 1; // 0:all, 1:any-best, 2:all-best
-    public static double MIN_ALIGNMENT_SCORE = 30.0;
+    public static int ALIGNMENT_MODE = 0; // 0:any-best, 1:all-best
+    public static double MIN_ALIGNMENT_SCORE = 10.0;
     public static int INNER_READS_DISTANCE = 500;
     
     public static int ANCHORS = 10000; // The number of anchor nodes
@@ -76,25 +70,25 @@ public class Pantools {
     public static int THREADS = 1;
     public static Map<String,Label> labels;
     
-    public static Label pangenome_label = label("pangenome");
-    public static Label genome_label = label("genome");
-    public static Label sequence_label = label("sequence");
-    public static Label nucleotide_label = label("nucleotide");
-    public static Label degenerate_label = label("degenerate");
-    public static Label annotation_label = label("annotation");
-    public static Label variation_label = label("variation");
-    public static Label gene_label = label("gene");
-    public static Label coding_gene_label = label("coding_gene");
-    public static Label mRNA_label = label("mRNA");
-    public static Label tRNA_label = label("tRNA");
-    public static Label rRNA_label = label("rRNA");
-    public static Label CDS_label = label("CDS");
-    public static Label exon_label = label("exon");
-    public static Label intron_label = label("intron");
-    public static Label feature_label = label("feature");
-    public static Label broken_protein_label = label("broken_protein");
-    public static Label homology_group_label = label("homology_group");
-    public static Label low_complexity_label = label("low_complexity");   
+    public static Label pangenome_label = Label.label("pangenome");
+    public static Label genome_label = Label.label("genome");
+    public static Label sequence_label = Label.label("sequence");
+    public static Label nucleotide_label = Label.label("nucleotide");
+    public static Label degenerate_label = Label.label("degenerate");
+    public static Label annotation_label = Label.label("annotation");
+    public static Label variation_label = Label.label("variation");
+    public static Label gene_label = Label.label("gene");
+    public static Label coding_gene_label = Label.label("coding_gene");
+    public static Label mRNA_label = Label.label("mRNA");
+    public static Label tRNA_label = Label.label("tRNA");
+    public static Label rRNA_label = Label.label("rRNA");
+    public static Label CDS_label = Label.label("CDS");
+    public static Label exon_label = Label.label("exon");
+    public static Label intron_label = Label.label("intron");
+    public static Label feature_label = Label.label("feature");
+    public static Label broken_protein_label = Label.label("broken_protein");
+    public static Label homology_group_label = Label.label("homology_group");
+    public static Label low_complexity_label = Label.label("low_complexity");   
     
     public static enum RelTypes implements RelationshipType {
         FF, FR, RF, RR,
@@ -128,7 +122,7 @@ public class Pantools {
      * @param args Command line arguments
      */
     public static void main(String[] args) {
-        int x, i, f;
+        int x, i;
         double y;
         File theDir;
         if (args.length < 1) {
@@ -145,7 +139,7 @@ public class Pantools {
         "tRNA", "rRNA", "CDS", "exon", "intron", "feature", 
         "broken_protein", "homology_group", "low_complexity"};        
         for (i = 0; i < label_strings.length; ++i)
-            labels.put(label_strings[i], label(label_strings[i]));
+            labels.put(label_strings[i], Label.label(label_strings[i]));
         System.out.println("\n------------------------------- PanTools ------------------------------");
         try{
             for (i = 1; i < args.length; i += 2){
@@ -369,14 +363,6 @@ public class Pantools {
                             System.exit(1);
                         }
                         System.out.println("FEATURE = " + FEATURE);
-                        break;
-                    case "--annotaion-type": case "-at":
-                        ANNOTATION_TYPE = args[i + 1];
-                        if (!ANNOTATION_TYPE.equals("gff") && !ANNOTATION_TYPE.equals("gbk")){
-                            System.out.println(args[i + 1] + " is an unknown annotation type.");
-                            System.exit(1);
-                        }
-                        System.out.println("ANNOTATION_TYPE = " + ANNOTATION_TYPE);
                         break;
                     case "--help": case "-h":
                         print_help_message();

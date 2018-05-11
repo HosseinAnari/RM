@@ -77,7 +77,7 @@ public final class IndexDatabase {
         int i, k;
         long p;
         try {
-            System.out.println("Mounting index " + index_path);
+            //System.out.println("Mounting index " + index_path);
             pre_file = new RandomAccessFile(index_path + "/sorted.kmc_pre", "r");
             BufferedReader in = new BufferedReader(new FileReader(index_path + INFO_FILE));
             K = Integer.parseInt(in.readLine().split(":")[1]);
@@ -93,7 +93,7 @@ public final class IndexDatabase {
             POINTER_LENGTH = Integer.parseInt(in.readLine().split(":")[1]);
             in.close();
             key=new kmer(K,pre_len);
-            System.out.println("Indexing " + kmers_num + " kmers...                    ");
+            //System.out.println("Indexing " + kmers_num + " kmers...                    ");
             // load the prefix file into the memory    
             pre_file.seek(4);
             int q, len = 1 << (2 * pre_len);
@@ -149,7 +149,7 @@ public final class IndexDatabase {
         try {
             Files.createDirectory(Paths.get(index_path));
             if (k == -1) // K is not given by the user, then calculate the optimal K
-                K = Math.round((float)((Math.log(0.002001) - Math.log(genomeDb.num_bytes))/Math.log(0.25))) - 2;
+                K = Math.round((float)((Math.log(0.002001) - Math.log(genomeDb.num_bytes))/Math.log(0.25)));
             else
                 K = k;
             if (K % 2 == 0) // Even values are problamatic to localization process 
@@ -772,7 +772,7 @@ public final class IndexDatabase {
         }
         return -1L; // not found
     }
-
+    
     /**
      * Converts the byte array to an integer value.
      * @param b The byte array

@@ -5,6 +5,7 @@
  */
 package sequence;
 
+import index.IndexDatabase;
 import index.kmer;
 import static pantools.Pantools.DEBUG;
 
@@ -13,24 +14,21 @@ import static pantools.Pantools.DEBUG;
  * @author siavash
  */
 public class SequenceScanner {
-    private int to_genome;
-    private int to_sequence;
     private int genome;
     private int sequence;
+    private long sequence_length;
     private int position;
     private int K;
     private kmer curr_kmer;
     private long curr_index;
     SequenceDatabase database;
     
-    public SequenceScanner(SequenceDatabase db, int fg, int tg, int fs, int ts, int k, int pre_len){
+    public SequenceScanner(SequenceDatabase db, int k, int pre_len){
         database = db;
         K = k;
         curr_kmer = new kmer(K,pre_len);
-        genome = fg;
-        to_genome = tg;
-        sequence = fs;
-        to_sequence = ts;
+        genome = 1;
+        sequence = 1;
     }
     
     public int get_genome(){
@@ -53,7 +51,7 @@ public class SequenceScanner {
     }
     
     public long get_sequence_length(){
-        return database.sequence_length[genome][sequence];
+        return sequence_length;
     }
     
     public long get_sequence_length(int g, int s){
@@ -81,6 +79,8 @@ public class SequenceScanner {
     }
     public void set_sequence(int s){
         sequence = s;
+        position = 0;
+        sequence_length = database.sequence_length[genome][sequence];
     }
     public void set_position(int p){
         position = p;
@@ -90,26 +90,21 @@ public class SequenceScanner {
     }
 
     public boolean end_of_scan(){
-        return genome > to_genome;
+        return genome > database.num_genomes;
     }      
     public boolean end_of_genome(){
-        return sequence > to_sequence;
+        return sequence > database.num_sequences[genome];
     }    
-    public boolean end_of_sequence(){
-        return position >= get_sequence_length() - 1;
-    }
-    public boolean start_of_sequence(){
-        return position <= 0;
-    }
     
     public void next_genome(){
         ++genome;
         sequence = 1;
-        if(!end_of_scan())
-            to_sequence = database.num_sequences[genome];
     }
     public void next_sequence(){
         ++sequence;
+        position = 0;
+        if (!end_of_genome())
+            sequence_length = database.sequence_length[genome][sequence];
     }
     public void next_position(){
         ++position;
@@ -126,27 +121,41 @@ public class SequenceScanner {
     * The negative value of current position if it passess a degenerate region.
     */
     public int initialize_kmer(int start) {
-        if (DEBUG) 
-            System.out.println("initialize_kmer at " + start);
+        if (DEBUG) System.out.println("initialize_kmer at " + start);
         int i;
         curr_kmer.reset();
         position = start - 1;
-        for (i = 0; i < K && position < get_sequence_length(); ++i) {
-            if (get_code(1) > 3) {
-                next_position();
+        for (i = 0; i < K && position < sequence_length - 1; ++i) {
+            next_position();
+            if (get_code(0) > 3) {
                 if (DEBUG) System.out.println("jump_forward");
                 if (jump_forward())
-                    return -position; // success but passed a degenerate region
+                    return - (position - K + 1); // success but passed a degenerate region
                 else
                     return Integer.MIN_VALUE; // failed
-            }
-            next_position();
-            curr_kmer.next_kmer(get_code(0));
+            } else
+                curr_kmer.next_kmer(get_code(0));
         }
         if (DEBUG) System.out.println(curr_kmer.toString());
         if (i == K)
-            return position; // success
+            return position - K + 1; // success
         else 
+            return Integer.MIN_VALUE; // failed
+    }
+
+    public int next_kmer() {
+        if (position < sequence_length - 1){
+            next_position();
+            if (get_code(0) > 3){
+                if (jump_forward())
+                    return - (position - K + 1); // success but passed a degenerate region
+                else
+                    return Integer.MIN_VALUE; // failed
+            } else {
+                curr_kmer.next_kmer(get_code(0));
+                return position - K + 1;
+            }
+        } else
             return Integer.MIN_VALUE; // failed
     }
 
@@ -157,14 +166,14 @@ public class SequenceScanner {
     public boolean jump_forward() {
         int j;
         int base_code = get_code(0);
-        curr_kmer.reset();
         do {
-            while (base_code > 3 && !end_of_sequence()) {
+            curr_kmer.reset();
+            while (base_code > 3 && position < get_sequence_length() - 1) {
                 next_position();
                 base_code = get_code(0);
             }
             curr_kmer.next_kmer(base_code);
-            for (j = 0; j < K - 1 && !end_of_sequence(); ++j) {
+            for (j = 0; j < K - 1 && position < get_sequence_length() - 1; ++j) {
                 next_position();
                 base_code = get_code(0);
                 if (base_code > 3) {
@@ -172,9 +181,9 @@ public class SequenceScanner {
                 }
                 curr_kmer.next_kmer(base_code);
             }
-        } while (base_code > 3 && !end_of_sequence());
+        } while (base_code > 3 && position < get_sequence_length() - 1);
         if (DEBUG) System.out.println(curr_kmer.toString());
-        return j == K; // got valid kmer
+        return j == K - 1; // got valid kmer
     }
 
     /**
@@ -365,7 +374,6 @@ public class SequenceScanner {
         title.append(database.sequence_titles[g][s]);
     } 
     
-
     /**
      * Determines the identity of two genomic regions.
      * 
@@ -419,5 +427,10 @@ public class SequenceScanner {
             tmp_kmer.next_kmer(fwd_code);
         }   
         return tmp_kmer;             
-    }    
+    }   
+    
+    public long find_curr_kmer(IndexDatabase inx){
+        curr_index = inx.find(curr_kmer);
+        return curr_index;
+    }
 }

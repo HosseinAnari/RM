@@ -13,7 +13,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Queue;
@@ -39,7 +38,6 @@ import static pangenome.GenomeLayer.getFolderSize;
 
 import static pantools.Pantools.GRAPH_DATABASE_PATH;
 import static pantools.Pantools.RelTypes;
-import static pantools.Pantools.labels;
 import static pantools.Pantools.startTime;
 import static pantools.Pantools.MAX_TRANSACTION_SIZE;
 import static pantools.Pantools.PATH_TO_THE_PANGENOME_DATABASE;
@@ -307,7 +305,7 @@ public class ProteomeLayer {
                                 }
                             // Sorts the crossing protein IDs to count the number of shared k-mers.    
                                 Arrays.sort(crossing_protein_ids, 0, num_ids);
-                                for (i = 0, counter = 0, crossing_protein_id = crossing_protein_ids[0]; i < num_ids ; ++i){
+                                for (i = 0, counter = 1, crossing_protein_id = crossing_protein_ids[0]; i < num_ids ; ++i){
                                     p_id = crossing_protein_ids[i];
                                 // New run of protein IDs    
                                     if (crossing_protein_id != p_id){
@@ -392,7 +390,7 @@ public class ProteomeLayer {
                         m = protein1.length();
                         n = protein2.length();
                         if (m == n)
-                            ints.similarity = aligner.score(protein1, protein2);
+                            ints.similarity = aligner.get_match_score(protein1, protein2);
                         else 
                             if (m < n)
                             ints.similarity = protein_similarity(protein1, protein2);
@@ -444,18 +442,18 @@ public class ProteomeLayer {
                     subject.setLength(0);
                     query.append(p1.substring(i * part_len1, Math.min(m, (i + 1) * part_len1)));
                     subject.append(p2.substring(i * part_len2, Math.min(n, (i + 1) * part_len2)));
-                    aligner.align(query, subject );
-                    score += aligner.get_score();
-                    p_score += aligner.perfect_score(query);
+                    aligner.align(query, subject);
+                    score += aligner.get_similarity_score();
+                    p_score += 5 * query.length();//aligner.perfect_score();
                 }
             } else {
                 query.setLength(0);
                 subject.setLength(0);
                 query.append(p1);
                 subject.append(p2);
-                aligner.align(query, subject );
-                score = aligner.get_score();
-                p_score = aligner.perfect_score(query);
+                aligner.align(query, subject);
+                score = aligner.get_similarity_score();
+                p_score = 5 * query.length();//aligner.perfect_score();
             }
             return score * 100.0 / p_score;
         }
