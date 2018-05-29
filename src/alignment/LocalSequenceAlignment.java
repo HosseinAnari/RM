@@ -944,7 +944,6 @@ public class LocalSequenceAlignment {
     public void align(StringBuilder s1, StringBuilder s2) {
         int i, j;
         int m = s1.length(), n = s2.length();
-        cigar.setLength(0);
         seq1 = s1;
         seq2 = s2;
         similarity_score = Integer.MIN_VALUE;
@@ -1008,7 +1007,7 @@ public class LocalSequenceAlignment {
         return similarity_score * 20 / seq1.length();
     }
     
-    public void calculate_cigar() {
+    public String get_cigar() {
         int i, j, move_counts = 1, count;
         char curr_move, prev_move, operation;
         offset = 0;
@@ -1065,11 +1064,10 @@ public class LocalSequenceAlignment {
                 prev_move = 'M';
                 move_counts = i; 
             }
-            j = j - i;
         }
         operation_stack.push(prev_move);
         count_stack.push(move_counts);
-        offset = j;
+        offset = j + 1;
 
         /*
         // Avoid D at the start of cigar only for read alignment
@@ -1085,14 +1083,9 @@ public class LocalSequenceAlignment {
             cigar.append(count).append(operation);
         }
         //System.out.println(cigar);
-    }
-   
-    public String get_cigar(){
-        if (cigar.length() == 0)
-            calculate_cigar();
         return cigar.toString();
     }
-    
+   
     public int get_offset(){
         return offset;
     }

@@ -46,7 +46,7 @@ import static pantools.Pantools.num_nodes;
 import static pantools.Pantools.phaseTime;
 import static pantools.Pantools.startTime;
 import static pantools.Pantools.MAX_TRANSACTION_SIZE;
-import static pantools.Pantools.ANCHORS;
+import static pantools.Pantools.ANCHORS_DISTANCE;
 import static pantools.Pantools.complement;
 import static pantools.Pantools.write_fasta;
 import java.text.SimpleDateFormat;
@@ -66,7 +66,6 @@ import java.util.logging.Logger;
 import org.neo4j.graphdb.NotFoundException;
 import static pantools.Pantools.ALIGNMENT_MODE;
 import static pantools.Pantools.DEBUG;
-import static pantools.Pantools.MAX_BOUND;
 import static pantools.Pantools.GAP_EXT;
 import static pantools.Pantools.GAP_OPEN;
 import static pantools.Pantools.INNER_READS_DISTANCE;
@@ -196,7 +195,11 @@ public class GenomeLayer {
                 return -1;
             else if (y.score > x.score) 
                 return 1;
-            else
+            else if (y.cigar.length() > x.cigar.length()) 
+                return -1;
+            else if (y.cigar.length() < x.cigar.length()) 
+                return 1;
+            else 
                 return 0;
         }
     }    
@@ -254,6 +257,7 @@ public class GenomeLayer {
         int num_neighbors = 0;
         int num_kmers = 0;
         int num_found = 0;
+        String read_name;
         
         public Map(int n, int[] gn, BufferedWriter[] m, boolean paired) {
             int i, j, genome;
@@ -261,7 +265,6 @@ public class GenomeLayer {
             genome_database = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
             K = index_database.get_K();
             genome_scanner = new SequenceScanner(genome_database, K, index_database.get_pre_len());
-            MAX_ALIGNMENT_LENGTH = 1000;
             number = n;
             genome_numbers = Arrays.copyOf(gn, gn.length);
             mapped = m;
@@ -303,7 +306,7 @@ public class GenomeLayer {
             }
             anchor_pointer = new IndexPointer();
             reference = new StringBuilder();
-            bounded_aligner = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, MAX_ALIGNMENT_LENGTH, MAX_BOUND, 'N');
+            bounded_aligner = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, MAX_ALIGNMENT_LENGTH, 'N');
             aligner = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT, MAX_ALIGNMENT_LENGTH, 'N');
             sam_record = new StringBuilder();
             best_hit = new hit[2];
@@ -364,11 +367,6 @@ public class GenomeLayer {
             for (mate = 0; mate < num_segments; ++mate){
                 get_read(read_num, mate);
                 bound = reads[mate].length() / 50 + 1;
-                if (bound > MAX_BOUND){
-                    System.out.println(bound + " exceeds the MAX_BOUND " + MAX_BOUND +
-                            ". Try a larger MAX_BOUND with --max-bound option.");
-                    System.exit(1);
-                }
                 bounded_aligner.initialize_bound(bound, reads[mate].length());
                 anchor_position = reads_scanner[mate].initialize_kmer(0);
                 while (anchor_position != Integer.MIN_VALUE && anchor_position <= reads[mate].length() - K){
@@ -400,7 +398,7 @@ public class GenomeLayer {
             //reads_scanner[mate].get_sequence_quality(reads[mate].quality, 1, read_num);
             reads_scanner[mate].get_sequence_title(reads[mate].name, 1, read_num);
             if (paired_end)
-                reads[mate].name.setLength(reads[mate].name.length() - 2);
+                read_name = reads[mate].name.toString().split("/")[0];
             //System.out.println("Getting " + reads[mate].forward_seq);
             if (reads[mate].length() > MAX_ALIGNMENT_LENGTH){
                 System.out.println(reads[mate].length() + " exceeds the MAX_ALIGNMENT_LENGTH " + MAX_ALIGNMENT_LENGTH +
@@ -561,6 +559,7 @@ public class GenomeLayer {
                     cigar = aligner.get_cigar();
                     offset = aligner.get_offset();
                     curr_hit = new hit(genome, sequence, score, ref_start, offset, forward, cigar);
+                    //System.out.println(reference);
                     hits[mate].add(curr_hit);
                 }
             }
@@ -608,7 +607,6 @@ public class GenomeLayer {
                 }                
             return diff > edits? Integer.MIN_VALUE : score;
         }  
-
         
         public boolean single_read_mapped(int genome){
             double first_score;
@@ -642,12 +640,12 @@ public class GenomeLayer {
             if (hits[0].isEmpty() || hits[1].isEmpty()){
                 null_hit = new hit(0, 0, 0, 0, 0, true, null);
                 if (hits[0].isEmpty() && hits[1].isEmpty())
-                // multiple segments|each segment properly aligned|secondary
-                    write_paired_sam_record(genome, null_hit, null_hit, 1|0|0);
-                else if (hits[0].isEmpty() && !hits[1].isEmpty())
-                    write_paired_sam_record(genome, null_hit, hits[1].remove(), 1|0|0);
+                // multiple segments|each segment properly aligned|secondary|unmapped
+                    write_paired_sam_record(genome, null_hit, null_hit, 1|0|0|12, 1|0|0|12);
+                else if (!hits[1].isEmpty())
+                    write_paired_sam_record(genome, null_hit, hits[1].remove(), 1|0|0|4, 1|0|0|8);
                 else 
-                    write_paired_sam_record(genome, hits[0].remove(), null_hit, 1|0|0);
+                    write_paired_sam_record(genome, hits[0].remove(), null_hit, 1|0|0|8, 1|0|0|4);
                 return false;
             } else {
                 switch (ALIGNMENT_MODE){
@@ -680,9 +678,9 @@ public class GenomeLayer {
                             }
                         } 
                         if (!had_hit)
-                            write_paired_sam_record(genome, hits[0].remove(), hits[1].remove(), 1|0|0);
+                            write_paired_sam_record(genome, hits[0].remove(), hits[1].remove(), 1|0|0|0, 1|0|0|0);
                         else
-                            write_paired_sam_record(genome, best_hit1, best_hit2, 1|2|0);
+                            write_paired_sam_record(genome, best_hit1, best_hit2, 1|2|0|0, 1|2|0|0);
                         break;
                     case 1:
                     // finds best score    
@@ -706,7 +704,7 @@ public class GenomeLayer {
                             }
                         } 
                         if (!had_hit)
-                            write_paired_sam_record(genome, hits[0].remove(), hits[1].remove(), 1|0|0);
+                            write_paired_sam_record(genome, hits[0].remove(), hits[1].remove(), 1|0|0|0, 1|0|0|0);
                         else{ // writes best_scored hits
                             for (itr1 = hits[0].iterator(); itr1.hasNext(); ){
                                 h1 = itr1.next();
@@ -717,12 +715,12 @@ public class GenomeLayer {
                                             score = (h1.score + h2.score) / 2;
                                             if (best_score - score < 1){
                                                 first_hit = false;
-                                                write_paired_sam_record(genome, h1, h2, 1|2|0);
+                                                write_paired_sam_record(genome, h1, h2, 1|2|0|0, 1|2|0|0);
                                             }
                                         } else{ 
                                             score = (h1.score + h2.score) / 2;
                                             if (best_score - score < 1){
-                                                write_paired_sam_record(genome, h1, h2, 1|2|256);
+                                                write_paired_sam_record(genome, h1, h2, 1|2|256|0, 1|2|256|0);
                                             }
                                         }
                                     }
@@ -737,8 +735,8 @@ public class GenomeLayer {
         }
         
         public boolean properly_mapped(hit h1, hit h2){
-            int position1 = h1.start + h1.offset + 1;
-            int position2 = h2.start + h2.offset + 1;
+            int position1 = h1.start + h1.offset;
+            int position2 = h2.start + h2.offset;
             if (h1.forward)
                 return position2 - (position1 + reads[0].forward_seq.length() ) < 1.5 * INNER_READS_DISTANCE ;
             else
@@ -768,7 +766,7 @@ public class GenomeLayer {
                 sam_record.append(reads[0].name).append('\t');
                 sam_record.append(flag).append('\t');
                 sam_record.append(genome_database.sequence_titles[h.genome][h.sequence].split("\\s")[0]).append('\t');
-                sam_record.append(h.start + h.offset + 1).append('\t');
+                sam_record.append(h.start + h.offset).append('\t');
                 sam_record.append((int)Math.round(-10 * Math.log10(1 - (h.score - 1) / 100.0))).append('\t');
                 sam_record.append(h.cigar).append('\t');
                 sam_record.append('*').append('\t');
@@ -785,17 +783,15 @@ public class GenomeLayer {
             }
         }
 
-        public void write_paired_sam_record(int genome, hit h1, hit h2, int base_flag){
-            int flag;
-            flag = base_flag;
-            flag |= 64; // the first segment
+        public void write_paired_sam_record(int genome, hit h1, hit h2, int flag1, int flag2){
+        // the first segment    
+            flag1 |= 64; 
             sam_record.setLength(0);
-            int position1 = h1.start + h1.offset + 1;
-            int position2 = h2.start + h2.offset + 1;
+            int position1 = h1.start + h1.offset;
+            int position2 = h2.start + h2.offset;
             if (h1.genome == 0){
-                flag |= 4; // segment unmapped
-                sam_record.append(reads[0].name).append('\t');
-                sam_record.append(flag).append('\t');
+                sam_record.append(read_name).append('\t');
+                sam_record.append(flag1).append('\t');
                 sam_record.append('*').append('\t');
                 sam_record.append(0).append('\t');
                 sam_record.append(0).append('\t');
@@ -808,12 +804,12 @@ public class GenomeLayer {
                 //sam_record.append(reads[0].quality).append('\n');
                 
             } else {
-                flag |= h1.forward?0:16; // SEQ being reverse complemented
-                flag |= h2.forward?0:32; // SEQ of the next segment in the template being reverse complemented
+                flag1 |= h1.forward?0:16; // SEQ being reverse complemented
+                flag1 |= h1.forward?32:0; // SEQ being reverse complemented
             //qname
-                sam_record.append(reads[0].name).append('\t'); 
+                sam_record.append(read_name).append('\t'); 
             //flag    
-                sam_record.append(flag).append('\t'); 
+                sam_record.append(flag1).append('\t'); 
             //rname    
                 sam_record.append(genome_database.sequence_titles[h1.genome][h1.sequence].split("\\s")[0]).append('\t');
             //pos    
@@ -844,20 +840,11 @@ public class GenomeLayer {
                 sam_record.append('*').append('\n');
                 //sam_record.append(reads[0].quality).append('\n');
             }
-            if (h2.genome == 0)
-                flag |= 8; // next segment in the template unmapped
-            try {
-                mapped[genome].write(sam_record.toString());
-            } catch (IOException ex) {
-                System.err.println(ex.getMessage());
-            }
-            flag = base_flag;
-            flag |= 128; // the second segment
-            sam_record.setLength(0);
+        // the second segment    
+            flag2 |= 128; 
             if (h2.genome == 0){ // not mapped
-                flag |= 4; // segment unmapped
-                sam_record.append(reads[1].name).append('\t');
-                sam_record.append(flag).append('\t');
+                sam_record.append(read_name).append('\t');
+                sam_record.append(flag2).append('\t');
                 sam_record.append('*').append('\t');
                 sam_record.append(0).append('\t');
                 sam_record.append(0).append('\t');
@@ -870,10 +857,10 @@ public class GenomeLayer {
                 //sam_record.append(reads[1].quality).append('\n');
                 
             } else {
-                flag |= h2.forward?0:16; // SEQ being reverse complemented
-                flag |= h1.forward?0:32; // SEQ of the next segment in the template being reverse complemented
-                sam_record.append(reads[1].name).append('\t');
-                sam_record.append(flag).append('\t');
+                flag2 |= h2.forward?0:16; // SEQ of the next segment in the template being reverse complemented
+                flag2 |= h2.forward?32:0; // SEQ of the next segment in the template being reverse complemented
+                sam_record.append(read_name).append('\t');
+                sam_record.append(flag2).append('\t');
                 sam_record.append(genome_database.sequence_titles[h2.genome][h2.sequence].split("\\s")[0]).append('\t');
                 sam_record.append(position2).append('\t');
                 sam_record.append((int)Math.round(-10 * Math.log10(1 - (h2.score - 1) / 100.0))).append('\t');
@@ -895,8 +882,6 @@ public class GenomeLayer {
                 sam_record.append('*').append('\n');
                 //sam_record.append(reads[1].quality).append('\n');
             }
-            if (h1.genome == 0)
-                flag |= 8; // next segment in the template unmapped
             try {
                mapped[genome].write(sam_record.toString());
             } catch (IOException ex) {
@@ -2103,9 +2088,9 @@ public class GenomeLayer {
     void localize_nodes() {
         ResourceIterator<Node> sequence_iterator;
         LinkedList<Node> sequence_nodes;
-        int anchors_distance, trsc = 0, i, len, m, neighbor_length = 0, count;
+        int trsc = 0, i, len, m, neighbor_length = 0;
         char node_side, neighbor_side;
-        long length;
+        long length, distance;
         long[] anchor_nodes;
         int[] anchor_positions;
         int[] initial_coordinate = new int[1];
@@ -2137,10 +2122,9 @@ public class GenomeLayer {
                 address[1] = (int)sequence_node.getProperty("number");
                 System.out.println("\rLocalizing sequence "+address[1] + "/" + genomeDb.num_sequences[address[0]] + " of genome " + address[0] + "                        ");
                 length = genomeDb.sequence_length[address[0]][address[1]] - 1;
-                anchors_distance = (int)num_nodes / ANCHORS + 1;
                 node = sequence_node;
                 node_side = 'F';
-                count = 0;
+                distance = 0;
                 for (address[2] = 0; address[2] + K_SIZE - 1 <= length && found;){ // K-1 bases of the last node not added
                     //System.out.println((address[2] + K - 1)+" ? " + length);
                     found = false;
@@ -2178,12 +2162,12 @@ public class GenomeLayer {
                                 initial_coordinate[0] = address[2];
                                 r.setProperty(origin, initial_coordinate);
                             }
-                            if (count % anchors_distance == 0) {
+                            if (address[2] >= distance) {
                                 nds.append(neighbor.getId()).append(" ");
                                 sds.append(neighbor_side);
                                 pos.append(address[2]).append(" ");
+                                distance += ANCHORS_DISTANCE;
                             }
-                            count++;
                             address[2] = address[2] + neighbor_length - K_SIZE + 1;
                             node = neighbor;
                             node_side = neighbor_side;

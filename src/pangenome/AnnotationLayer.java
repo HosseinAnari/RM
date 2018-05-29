@@ -693,7 +693,7 @@ public class AnnotationLayer {
         String ID;
         String line;
         boolean forward;
-        int i, j, num_genomes, begin, end, genome;
+        int i, j, num_genomes, begin, end, genome = 0;
         int[] address, genome_numbers;
         StringBuilder feature_seq;
         Label feature_label = labels.get(FEATURE);
@@ -715,6 +715,12 @@ public class AnnotationLayer {
                 if (line.equals("")) {
                     continue;
                 }
+                try{
+                    genome = Integer.parseInt(line.trim());
+                }catch(NumberFormatException e){
+                    System.out.println(genome + "is not a valid genome number.");
+                    continue;
+                }
                 num_genomes++;
             }
             in.close();
@@ -732,7 +738,12 @@ public class AnnotationLayer {
                     if (line.equals("")) {
                         continue;
                     }
-                    genome = genome_numbers[i] = Integer.parseInt(line.trim());
+                    try{
+                        genome = genome_numbers[i] = Integer.parseInt(line.trim());
+                    }catch(NumberFormatException e){
+                        System.out.println(genome + " skipped.");
+                        continue;
+                    }
                     out[genome] = new BufferedWriter(new FileWriter(FEATURE + "s." + genome + ".fasta"));
                     ++i;
                 }

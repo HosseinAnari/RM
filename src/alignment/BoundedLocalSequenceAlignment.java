@@ -38,12 +38,12 @@ public class BoundedLocalSequenceAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public BoundedLocalSequenceAlignment(int go, int ge, int max_len, int max_bound, char type) {
+    public BoundedLocalSequenceAlignment(int go, int ge, int max_len, char type) {
         int i, j;
         GAP_OPEN = go;
         GAP_EXT = ge;
         MAX_LENGTH = max_len;
-        MAX_BOUND = max_bound;
+        MAX_BOUND = max_len / 10 + 1;
         TYPE = type;
     // initialize matrixes
         matrix = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
@@ -976,7 +976,6 @@ public class BoundedLocalSequenceAlignment {
     public void align(StringBuilder s1, StringBuilder s2) {
         int i, j, stop;
         int m, n;
-        cigar.setLength(0);
         seq1 = s1;
         seq2 = s2;
         similarity_score = Integer.MIN_VALUE;
@@ -1092,10 +1091,9 @@ public class BoundedLocalSequenceAlignment {
         return num_matches;
     }
 
-    public void calculate_cigar() {
+    public String get_cigar() {
         int i, j, move_counts = 1, count;
         char curr_move, prev_move, operation;
-        offset = 0;
         operation_stack.clear();
         count_stack.clear();
         cigar.setLength(0);
@@ -1153,7 +1151,7 @@ public class BoundedLocalSequenceAlignment {
         }
         operation_stack.push(prev_move);
         count_stack.push(move_counts);
-        offset = j - 1;
+        offset = j;
 
         /*
         // Avoid D at the start of cigar only for read alignment
@@ -1169,14 +1167,9 @@ public class BoundedLocalSequenceAlignment {
             cigar.append(count).append(operation);
         }
         //System.out.println(cigar);
-    }
-   
-    public String get_cigar(){
-        if (cigar.length() == 0)
-            calculate_cigar();
         return cigar.toString();
     }
-    
+   
     public long get_similarity_score(){
         return similarity_score;
     }
