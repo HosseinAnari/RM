@@ -199,7 +199,15 @@ public class GenomeLayer {
                 return -1;
             else if (y.cigar.length() < x.cigar.length()) 
                 return 1;
-            else 
+            else if (y.sequence < x.sequence) 
+                return -1;
+            else if (y.sequence > x.sequence) 
+                return 1;
+            else if (y.start < x.start) 
+                return -1;
+            else if (y.start > x.start) 
+                return 1;
+            else
                 return 0;
         }
     }    
@@ -371,20 +379,20 @@ public class GenomeLayer {
                 anchor_position = reads_scanner[mate].initialize_kmer(0);
                 while (anchor_position != Integer.MIN_VALUE && anchor_position <= reads[mate].length() - K){
                     cur_index = reads_scanner[mate].find_curr_kmer(index_database);
-                    if (cur_index != -1l){
-                        try{
+                    //System.out.println(">" + reads_scanner[mate].get_curr_kmer().toString());
+                    try{
+                        if (cur_index != -1l){
                             index_database.get_pointer(anchor_pointer, cur_index);
                             node = graphDb.getNodeById(anchor_pointer.node_id);
                             node_len = (int)node.getProperty("length");
                             find_locations(node, node_len, mate);
-                        } catch (NotFoundException|ClassCastException ex){
-                            //num_exceptions++;
-                            //System.out.println(ex.getMessage());
-                        } 
-                        for (i = 0; i < 9; ++i)
-                            reads_scanner[mate].next_kmer();
-                    }
-                    anchor_position = reads_scanner[mate].next_kmer();
+                        }
+                        for (i = 0; i < 10; ++i)
+                            anchor_position = reads_scanner[mate].next_kmer();
+                    } catch (NotFoundException|ClassCastException ex){
+                        //num_exceptions++;
+                        //System.out.println(ex.getMessage());
+                    } 
                 }
             }
         }
@@ -554,7 +562,7 @@ public class GenomeLayer {
             } else { // could not be bounded mapped
                 genome_scanner.get_sub_sequence(reference, genome, sequence, ref_start, reads[mate].length(), true);
                 aligner.align(forward?reads[mate].forward_seq:reads[mate].reverse_seq, reference); 
-                score = bounded_aligner.get_similarity_percentage();
+                score = aligner.get_similarity_percentage();
                 if (score >= MIN_ALIGNMENT_SCORE){ // to prevent false positives e.g. random hits
                     cigar = aligner.get_cigar();
                     offset = aligner.get_offset();
@@ -578,36 +586,7 @@ public class GenomeLayer {
             }
             return diff == 0;// || rev_diff == 0;
         }  
-        
-        public int diff_score(int mate, int g1, int s1, int p1, int edits, boolean forward) {
-            int i, diff = 0, score = 0, code1, code2, len = reads[mate].length();
-            if (forward)
-                for (i = 0; i < len && diff <= edits; ++i) {
-                    code1 = genome_scanner.get_code(g1, s1, p1 + bound + i);
-                    code2 = genome_scanner.get_code(best_hit[mate].genome, best_hit[mate].sequence, best_hit[mate].start + bound + i);
-                    if (code1 != code2){
-                        ++diff;
-                        if (genome_database.sym[code2] == reads[mate].forward_seq.charAt(i))
-                            score += 9;
-                        else if (genome_database.sym[code1] == reads[mate].forward_seq.charAt(i))
-                            score -= 9;
-                    }
-                }
-            else
-                for (i = 0; i < len && diff <= edits; ++i) {
-                    code1 = genome_scanner.get_code(g1, s1, p1 + bound + i);
-                    code2 = genome_scanner.get_complement_code(best_hit[mate].genome, best_hit[mate].sequence, best_hit[mate].start + bound + len - i - 1);
-                    if (code1 != code2){
-                        ++diff;
-                        if (genome_database.sym[code2] == reads[mate].forward_seq.charAt(i))
-                            score += 9;
-                        else if (genome_database.sym[code1] == reads[mate].forward_seq.charAt(i))
-                            score -= 9;
-                    }
-                }                
-            return diff > edits? Integer.MIN_VALUE : score;
-        }  
-        
+                
         public boolean single_read_mapped(int genome){
             double first_score;
             hit h;
@@ -654,6 +633,7 @@ public class GenomeLayer {
                             h1 = itr1.next();
                             for (itr2 = hits[1].iterator(); itr2.hasNext(); ){
                                 h2 = itr2.next();
+                                //System.out.println(h1.toString() + " & " +h2.toString());
                                 if (h1.sequence == h2.sequence && h1.forward == !h2.forward && properly_mapped(h1, h2)){
                                     if (first_hit){
                                         first_hit = false;
@@ -665,7 +645,9 @@ public class GenomeLayer {
                                     } else{ 
                                         score = (h1.score + h2.score) / 2;
                                         cigar_length = h1.cigar.length() + h1.cigar.length();
-                                        if (best_score < score || (best_score == score && cigar_length < best_cigar_length)){
+                                        if (best_score < score || 
+                                           (best_score == score && cigar_length  < best_cigar_length) || 
+                                           (best_score == score && cigar_length == best_cigar_length && h1.start < best_hit1.start)){
                                             best_hit1 = h1;
                                             best_hit2 = h2;
                                             best_score = score;
@@ -738,9 +720,9 @@ public class GenomeLayer {
             int position1 = h1.start + h1.offset;
             int position2 = h2.start + h2.offset;
             if (h1.forward)
-                return position2 - (position1 + reads[0].forward_seq.length() ) < 1.5 * INNER_READS_DISTANCE ;
+                return position2 - (position1 + reads[0].forward_seq.length() ) > 0 && position2 - (position1 + reads[0].forward_seq.length() ) < (2 * INNER_READS_DISTANCE) ;
             else
-                return position1 - (position2 + reads[1].forward_seq.length() ) < 1.5 * INNER_READS_DISTANCE;
+                return position1 - (position2 + reads[1].forward_seq.length() ) > 0 && position1 - (position2 + reads[1].forward_seq.length() ) < (2 * INNER_READS_DISTANCE);
         }
 
         public void write_single_sam_record(int genome, hit h, int secondary){
@@ -815,7 +797,7 @@ public class GenomeLayer {
             //pos    
                 sam_record.append(position1).append('\t');
             //mapq    
-                sam_record.append((int)Math.round(-10 * Math.log10(1 - (h1.score - 1) / 100.0))).append('\t');
+                sam_record.append((int)Math.round(-10 * Math.log10(1 - (h1.score/100.0 - 0.01)))).append('\t');
             //cigar    
                 sam_record.append(h1.cigar).append('\t');
             //rnext
@@ -863,7 +845,7 @@ public class GenomeLayer {
                 sam_record.append(flag2).append('\t');
                 sam_record.append(genome_database.sequence_titles[h2.genome][h2.sequence].split("\\s")[0]).append('\t');
                 sam_record.append(position2).append('\t');
-                sam_record.append((int)Math.round(-10 * Math.log10(1 - (h2.score - 1) / 100.0))).append('\t');
+                sam_record.append((int)Math.round(-10 * Math.log10(1 - (h2.score/100.0 - 0.01)))).append('\t');
                 sam_record.append(h2.cigar).append('\t');
                 if (h1.sequence == h2.sequence)
                     sam_record.append('=').append('\t');

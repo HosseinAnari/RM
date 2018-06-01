@@ -946,6 +946,8 @@ public class LocalSequenceAlignment {
         int m = s1.length(), n = s2.length();
         seq1 = s1;
         seq2 = s2;
+        //System.out.println(s1);
+        //System.out.println(s2);
         similarity_score = Integer.MIN_VALUE;
         for (i = 1; i <= m; i++) {
             for (j = 1; j <= n; j++) {
