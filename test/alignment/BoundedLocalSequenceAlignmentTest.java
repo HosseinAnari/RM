@@ -10,11 +10,8 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
-import static pantools.Pantools.MAX_BOUND;
 import static pantools.Pantools.GAP_EXT;
 import static pantools.Pantools.GAP_OPEN;
-import static pantools.Pantools.MAX_ALIGNMENT_LENGTH;
 
 /**
  *
@@ -47,10 +44,9 @@ public class BoundedLocalSequenceAlignmentTest {
     @Test
     public void test() {
         int i, j, m, n;
-        BoundedLocalSequenceAlignment instance = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, MAX_ALIGNMENT_LENGTH, MAX_BOUND, 'N');
+        BoundedLocalSequenceAlignment instance = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, 5, 'N');
         StringBuilder seq1 = new StringBuilder("CTTTATGAAGAAAAAAGTT");
         StringBuilder seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        instance.initialize_bound(5, 21);
         instance.align(seq1, seq2);
         int max[] = instance.get_max_coordinates();
         m = seq1.length();
@@ -77,7 +73,7 @@ public class BoundedLocalSequenceAlignmentTest {
         System.out.println("Coordinates = "+ max[0] + " " + max[1]);
         System.out.println("Score = "+ instance.get_similarity_score());
         System.out.println(instance.get_alignment());
-        instance.calculate_cigar();
+        instance.get_cigar();
         System.out.println(instance.get_cigar());
         System.out.println();
         
@@ -99,7 +95,7 @@ public class BoundedLocalSequenceAlignmentTest {
         System.out.println("Coordinates = "+ max[0] + " " + max[1]);
         System.out.println("Score = "+ instance.get_similarity_score());
         System.out.println(instance.get_alignment());
-        instance.calculate_cigar();
+        instance.get_cigar();
         System.out.println(instance.get_cigar());
         System.out.println();
         
@@ -121,7 +117,7 @@ public class BoundedLocalSequenceAlignmentTest {
         System.out.println("Coordinates = "+ max[0] + " " + max[1]);
         System.out.println("Score = "+ instance.get_similarity_score());
         System.out.println(instance.get_alignment());
-        instance.calculate_cigar();
+        instance.get_cigar();
         System.out.println(instance.get_cigar());
         System.out.println();
         
@@ -143,7 +139,7 @@ public class BoundedLocalSequenceAlignmentTest {
         System.out.println("Coordinates = "+ max[0] + " " + max[1]);
         System.out.println("Score = "+ instance.get_similarity_score());
         System.out.println(instance.get_alignment());
-        instance.calculate_cigar();
+        instance.get_cigar();
         System.out.println(instance.get_cigar());
     }
 }

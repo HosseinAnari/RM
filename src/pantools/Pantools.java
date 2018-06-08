@@ -54,12 +54,7 @@ public class Pantools {
     public static int THRESHOLD = 95;
     public static int GAP_OPEN = -20;
     public static int GAP_EXT = -1;
-    public static int MAX_ALIGNMENT_LENGTH = 5000;
-    public static int MIN_BASE_QUALITY = 0;
-    public static int ALIGNMENT_MODE = 0; // 0:any-best, 1:all-best
-    public static double MIN_ALIGNMENT_SCORE = 10.0;
     public static int INNER_READS_DISTANCE = 500;
-    
     public static int ANCHORS_DISTANCE = 10000; // The distance between two anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
     public static int cores = Runtime.getRuntime().availableProcessors();
@@ -276,16 +271,6 @@ public class Pantools {
                         System.out.println("INFLATION = " + INFLATION);
                         System.out.println("CONTRAST = " + CONTRAST);
                         break;
-                    case "--base-quality": case "-bq":
-                        x = Integer.parseInt(args[i + 1]);
-                        if (x >= 0)
-                            MIN_BASE_QUALITY = x;
-                        else {
-                            System.out.println("MIN_BASE_QUALITY should be positive or do not specify it to use the default value.");
-                            System.exit(1);
-                        }
-                        System.out.println("MIN_BASE_QUALITY = " + MIN_BASE_QUALITY);
-                        break;
                     case "--threads-number": case "-tn":
                         x = Integer.parseInt(args[i + 1]);
                         if (x < cores)
@@ -315,26 +300,6 @@ public class Pantools {
                             System.exit(1);
                         }
                         System.out.println("GAP_EXT = " + GAP_EXT);
-                        break;
-                    case "--max-length": case "-ml":
-                        x = Integer.parseInt(args[i + 1]);
-                        if (x >= 100 && x <= 5000)
-                            MAX_ALIGNMENT_LENGTH = x;
-                        else {
-                            System.out.println("Choose MAX_ALIGNMENT_LENGTH in the range [100..5000] or do not specify it to use the default value.");
-                            System.exit(1);
-                        }
-                        System.out.println("MAX_ALIGNMENT_LENGTH = " + MAX_ALIGNMENT_LENGTH);
-                        break;
-                    case "--minimum-score": case "-ms":
-                        y = Double.parseDouble(args[i + 1]);
-                        if (y >= 1.0 && y <= 99.0)
-                            MIN_ALIGNMENT_SCORE = y;
-                        else {
-                            System.out.println("Choose MIN_ALIGNMENT_SCORE in the range [1..99] or do not specify it to use the default value.");
-                            System.exit(1);
-                        }
-                        System.out.println("MIN_ALIGNMENT_SCORE = " + MIN_ALIGNMENT_SCORE);
                         break;
                     case "--inner_distance": case "-id":
                         INNER_READS_DISTANCE = Integer.parseInt(args[i + 1]);

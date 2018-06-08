@@ -178,7 +178,7 @@ public class AnnotationLayer {
         startTime = System.currentTimeMillis();
         genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
         indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
-        genome_scanner = new SequenceScanner(genomeDb, K_SIZE, indexDb.get_pre_len());
+        genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
         num_proteins = 0;
         try{
             BufferedReader paths = new BufferedReader(new FileReader(PATH_TO_THE_ANNOTATIONS_FILE));
@@ -210,17 +210,17 @@ public class AnnotationLayer {
                     annotation_node.setProperty("genome", address[0]);
                     annotation_node.setProperty("number", degree);
                     annotation_node.setProperty("identifier", address[0] + "_" + degree);
+                    if (annotation_file.endsWith(".gff") || annotation_file.endsWith(".gff3")){
+                        parse_gff(address, address[0] + "_" + degree, log_file, annotation_file);
+                        annotation_node.setProperty("type", "GFF");
+                    }
+                    else if (annotation_file.endsWith(".gbk") || annotation_file.endsWith(".gbff")){
+                        parse_gbk(address, address[0] + "_" + degree, log_file, annotation_file, PATH_TO_THE_PANGENOME_DATABASE + "/proteins");
+                        annotation_node.setProperty("type", "GenBank");
+                    } else {
+                        System.err.println("Invalid extension for the annotaion file. Valid extensions are .gff .gff3 .gbk .gbff");
+                    }
                     tx.success();
-                }
-                if (annotation_file.endsWith(".gff") || annotation_file.endsWith(".gff3")){
-                    parse_gff(address, address[0] + "_" + degree, log_file, annotation_file);
-                    annotation_node.setProperty("type", "GFF");
-                }
-                else if (annotation_file.endsWith(".gbk") || annotation_file.endsWith(".gbff")){
-                    parse_gbk(address, address[0] + "_" + degree, log_file, annotation_file, PATH_TO_THE_PANGENOME_DATABASE + "/proteins");
-                    annotation_node.setProperty("type", "GenBank");
-                } else {
-                    System.err.println("Invalid extension for the annotaion file. Valid extensions are .gff .gff3 .gbk .gbff");
                 }
             } // for genomes
             paths.close();
@@ -291,7 +291,7 @@ public class AnnotationLayer {
                                 log_file.write("Sequence ID = "+sequence_id+" missed in genome "+address[0]+"\n"); // usually organal genes
                                 continue;
                             } else {
-                                seq_node = graphDb.findNode(sequence_label, "number", address[1]);
+                                seq_node = graphDb.findNode(sequence_label, "identifier", address[0] + "_" + address[1]);
                                 seq_len = genomeDb.sequence_length[address[0]][address[1]];
                             }
                             if(address[2] > seq_len) {
@@ -704,7 +704,7 @@ public class AnnotationLayer {
         genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
         indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
         K_SIZE = indexDb.get_K();
-        genome_scanner = new SequenceScanner(genomeDb, K_SIZE, indexDb.get_pre_len());
+        genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
         num_genomes = 0;
         feature_seq = new StringBuilder();
         BufferedWriter[] out = new BufferedWriter[genomeDb.num_genomes + 1];

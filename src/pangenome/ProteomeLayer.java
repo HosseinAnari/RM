@@ -47,7 +47,6 @@ import static pantools.Pantools.CONTRAST;
 import static pantools.Pantools.GAP_EXT;
 import static pantools.Pantools.GAP_OPEN;
 import static pantools.Pantools.INFLATION;
-import static pantools.Pantools.MAX_ALIGNMENT_LENGTH;
 import static pantools.Pantools.PATH_TO_THE_PROTEOMES_FILE;
 import static pantools.Pantools.THREADS;
 import static pantools.Pantools.executeCommand_for;
@@ -87,7 +86,7 @@ public class ProteomeLayer {
     
     public ProteomeLayer(){
         MAX_INTERSECTIONS  = 10000000;
-        MAX_KMERS_NUM = (int)Math.round(Math.pow(20, PEPTIDE_SIZE));
+        MAX_KMERS_NUM = (int)Math.round(Math.pow(21, PEPTIDE_SIZE));
     }
 
     public class intersection{
@@ -151,8 +150,8 @@ public class ProteomeLayer {
             String protein;
             int[] code = new int[256];
             char[] aminoacids = new char[]
-            {'A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y'};
-            for (i = 0; i < 20; ++i)
+            {'A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y','*'};
+            for (i = 0; i < 21; ++i)
                 code[aminoacids[i]] = i;
             kmer_frequencies = new int[MAX_KMERS_NUM];
             try{
@@ -165,12 +164,12 @@ public class ProteomeLayer {
                             if (protein_length > PEPTIDE_SIZE){
                                 kmer_index = 0;
                                 for (i = 0; i < PEPTIDE_SIZE; ++i)
-                                    kmer_index = kmer_index * 20 + code[protein.charAt(i)];
+                                    kmer_index = kmer_index * 21 + code[protein.charAt(i)];
                                 for (; i < protein_length; ++i){// for each kmer of the protein
                                     if (kmer_frequencies[kmer_index] == 0)
                                         ++num_hexamers;
                                     kmer_frequencies[kmer_index] += 1;
-                                    kmer_index = kmer_index % (MAX_KMERS_NUM / 20) * 20 + code[protein.charAt(i)];
+                                    kmer_index = kmer_index % (MAX_KMERS_NUM / 21) * 21 + code[protein.charAt(i)];
                                 }                            
                             }
                         }
@@ -181,6 +180,8 @@ public class ProteomeLayer {
                 for (i = 0; i < MAX_KMERS_NUM; ++i){
                     if (kmer_frequencies[i] > 1 && kmer_frequencies[i] < MAX_KMER_FREQ)// + num_genomes / 2
                         kmers_proteins_list[i] = new long[kmer_frequencies[i]];
+                    else
+                        kmers_proteins_list[i] = null;
                     kmer_frequencies[i] = 0;
                 }
             } catch(InterruptedException e){
@@ -211,8 +212,8 @@ public class ProteomeLayer {
             long protein_id;
             int[] code = new int[256];
             char[] aminoacids = new char[]
-            {'A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y'};
-            for (i = 0; i < 20; ++i)
+            {'A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y','*'};
+            for (i = 0; i < 21; ++i)
                 code[aminoacids[i]] = i;
             try{
                 try (Transaction tx = graphDb.beginTx()) {
@@ -225,14 +226,14 @@ public class ProteomeLayer {
                             if (protein_length > PEPTIDE_SIZE){
                                 kmer_index = 0;
                                 for (i = 0; i < PEPTIDE_SIZE; ++i)
-                                    kmer_index = kmer_index * 20 + code[protein.charAt(i)];
+                                    kmer_index = kmer_index * 21 + code[protein.charAt(i)];
                                 for (; i < protein_length; ++i){// for each kmer of the protein
                                 // ignore extremely rare and abundant k-mers    
                                     if (kmers_proteins_list[kmer_index] != null){
                                         kmers_proteins_list[kmer_index][kmer_frequencies[kmer_index]] = protein_id;
                                         ++kmer_frequencies[kmer_index];
                                     }
-                                    kmer_index = kmer_index % (MAX_KMERS_NUM / 20) * 20 + code[protein.charAt(i)];
+                                    kmer_index = kmer_index % (MAX_KMERS_NUM / 21) * 21 + code[protein.charAt(i)];
                                 }                            
                             }
                             if (c % chunk == 0)
@@ -268,8 +269,8 @@ public class ProteomeLayer {
             long[] crossing_protein_ids= new long[max_intersection];
             int[] code = new int[256];
             char[] aminoacids = new char[]
-            {'A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y'};
-            for (i = 0; i < 20; ++i)
+            {'A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y','*'};
+            for (i = 0; i < 21; ++i)
                 code[aminoacids[i]] = i;
             Node protein_node, crossing_protein_node;
             long protein_id;
@@ -289,7 +290,7 @@ public class ProteomeLayer {
                                 num_ids = 0;
                                 kmer_index = 0;
                                 for (i = 0; i < PEPTIDE_SIZE; ++i)
-                                    kmer_index = kmer_index * 20 + code[protein.charAt(i)];
+                                    kmer_index = kmer_index * 21 + code[protein.charAt(i)];
                                 for (; i < protein_length && num_ids < max_intersection; ++i){// for each kmer of the protein
                                     if (kmers_proteins_list[kmer_index] != null){
                                         len = kmers_proteins_list[kmer_index].length;
@@ -301,7 +302,7 @@ public class ProteomeLayer {
                                             }
                                         }
                                     }
-                                    kmer_index = kmer_index % (MAX_KMERS_NUM / 20) * 20 + code[protein.charAt(i)];
+                                    kmer_index = kmer_index % (MAX_KMERS_NUM / 21) * 21 + code[protein.charAt(i)];
                                 }
                             // Sorts the crossing protein IDs to count the number of shared k-mers.    
                                 Arrays.sort(crossing_protein_ids, 0, num_ids);
@@ -360,6 +361,7 @@ public class ProteomeLayer {
      * Multiple threads can call this runnable.
      */
     public class Find_similarities implements Runnable {
+        int MAX_ALIGNMENT_LENGTH = 1000;
         int m, n, threshold = THRESHOLD;
         int processed = 0;
         StringBuilder query;
@@ -407,6 +409,8 @@ public class ProteomeLayer {
                                 all_intersections_found = true;
                                 num_ints -= THREADS * processed;
                             }
+                            if (num_ints < 40)
+                                num_ints = 40;
                         }
                         if (all_intersections_found && processed % (num_ints / 40) == 0){
                             System.out.print("|");

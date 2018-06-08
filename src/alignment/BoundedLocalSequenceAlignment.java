@@ -28,7 +28,7 @@ public class BoundedLocalSequenceAlignment {
     private int max_i;
     private int max_j;
     private int MAX_BOUND;
-    private int BOUND;
+    private int bound;
     private char TYPE;
     private int offset;
     
@@ -38,12 +38,12 @@ public class BoundedLocalSequenceAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public BoundedLocalSequenceAlignment(int go, int ge, int max_len, char type) {
+    public BoundedLocalSequenceAlignment(int go, int ge, int max_len, int maxbound, char type) {
         int i, j;
         GAP_OPEN = go;
         GAP_EXT = ge;
         MAX_LENGTH = max_len;
-        MAX_BOUND = max_len / 10 + 1;
+        MAX_BOUND = maxbound;
         TYPE = type;
     // initialize matrixes
         matrix = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
@@ -55,17 +55,17 @@ public class BoundedLocalSequenceAlignment {
         count_stack = new Stack();
         direction[0][0] = 'M';
         for (i = 1; i <= MAX_LENGTH; i++) {
-                direction[i][0] = 'I';
-                up[i][0] = 0;//GAP_OPEN + i * GAP_EXT;
-                left[i][0] = Integer.MIN_VALUE;
-                matrix[i][0] = 0;
-            }
-        for (j = 1; j <= MAX_BOUND; j++) {
-                direction[0][j] = 'D';
-                up[0][j] = Integer.MIN_VALUE;
-                left[0][j] = 0;//GAP_OPEN + j * GAP_EXT;
-                matrix[0][j] = 0;
-            }
+            direction[i][0] = 'I';
+            up[i][0] = 0;//GAP_OPEN + i * GAP_EXT;
+            left[i][0] = Integer.MIN_VALUE;
+            matrix[i][0] = 0;
+        }
+        for (j = 1; j <= 2 * MAX_BOUND + 2; j++) {
+            direction[0][j] = 'D';
+            up[0][j] = Integer.MIN_VALUE;
+            left[0][j] = 0;//GAP_OPEN + j * GAP_EXT;
+            matrix[0][j] = 0;
+        }
         if (TYPE == 'N')
             initialize_NUCC_matrix();
         else if (TYPE == 'P')
@@ -87,6 +87,21 @@ public class BoundedLocalSequenceAlignment {
         System.exit(0); */ 
     }
     
+    public final void initialize_bound(int b, int query_len){
+        int i;
+        bound = b;
+        for (i = 1; i <= query_len; i++) {
+            // below the bound
+            up[i][0] = Integer.MIN_VALUE;
+            left[i][0] = Integer.MIN_VALUE;
+            matrix[i][0] = Integer.MIN_VALUE;
+            // above the bound
+            up[i][2 * bound + 2] = Integer.MIN_VALUE;
+            left[i][2 * bound + 2] = Integer.MIN_VALUE;
+            matrix[i][2 * bound + 2] = Integer.MIN_VALUE;
+        }
+    }
+
     public final void initialize_NUCC_matrix(){
         match = new int[256][256];
 
@@ -951,22 +966,7 @@ public class BoundedLocalSequenceAlignment {
         System.out.println(this.get_score());
         System.exit(0);*/
     }
-    
-    public final void initialize_bound(int bound, int query_len){
-        int i;
-        BOUND = bound;
-        for (i = 1; i <= query_len; i++) {
-            // below the bound
-            up[i][0] = Integer.MIN_VALUE;
-            left[i][0] = Integer.MIN_VALUE;
-            matrix[i][0] = Integer.MIN_VALUE;
-            // above the bound
-            up[i][2 * BOUND + 2] = Integer.MIN_VALUE;
-            left[i][2 * BOUND + 2] = Integer.MIN_VALUE;
-            matrix[i][2 * BOUND + 2] = Integer.MIN_VALUE;
-        }
-    }
-    
+        
     /**
      * Calculates the similarity score of two nucleotide sequences (score is not greater than 1).
      * @param s1 First sequence
@@ -989,12 +989,12 @@ public class BoundedLocalSequenceAlignment {
             System.out.println(s1);
             System.out.println("m: " + m + " n: " + n);
             System.out.print("\n    ");
-            for (j = 1; j <= 2 * BOUND + 1; j++) 
+            for (j = 1; j <= 2 * bound + 1; j++) 
                 System.out.print(String.format("%4d", j ));
             System.out.println();*/
             for (i = 1; i <= m; i++) {
                 //System.out.print(i + String.format("%4c", seq1.charAt(i-1) ));
-                stop = 2 * BOUND + 1;
+                stop = 2 * bound + 1;
                 for (j = 1; j <= stop; j++) {
                     up[i][j] = Math.max( up[i-1][j+1] + GAP_EXT , Math.max(matrix[i-1][j+1], left[i-1][j+1]) + GAP_OPEN + GAP_EXT);
                     left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);

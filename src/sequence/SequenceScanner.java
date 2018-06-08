@@ -16,19 +16,19 @@ import static pantools.Pantools.DEBUG;
 public class SequenceScanner {
     private int genome;
     private int sequence;
-    private long sequence_length;
     private int position;
     private int K;
     private kmer curr_kmer;
     private long curr_index;
     SequenceDatabase database;
     
-    public SequenceScanner(SequenceDatabase db, int k, int pre_len){
+    public SequenceScanner(SequenceDatabase db, int g, int s, int k, int pre_len){
+        genome = g;
+        sequence = s;
         database = db;
+        position = 0;
         K = k;
         curr_kmer = new kmer(K,pre_len);
-        genome = 1;
-        sequence = 1;
     }
     
     public int get_genome(){
@@ -40,6 +40,12 @@ public class SequenceScanner {
     public int get_position(){
         return position;
     }
+    public String get_title(){
+        return database.sequence_titles[genome][sequence];
+    }    
+    public long get_offset(){
+        return database.sequence_offset[genome][sequence];
+    }    
     public kmer get_curr_kmer(){
         return curr_kmer;
     }
@@ -51,7 +57,7 @@ public class SequenceScanner {
     }
     
     public long get_sequence_length(){
-        return sequence_length;
+        return database.sequence_length[genome][sequence];
     }
     
     public long get_sequence_length(int g, int s){
@@ -80,7 +86,6 @@ public class SequenceScanner {
     public void set_sequence(int s){
         sequence = s;
         position = 0;
-        sequence_length = database.sequence_length[genome][sequence];
     }
     public void set_position(int p){
         position = p;
@@ -103,8 +108,6 @@ public class SequenceScanner {
     public void next_sequence(){
         ++sequence;
         position = 0;
-        if (!end_of_genome())
-            sequence_length = database.sequence_length[genome][sequence];
     }
     public void next_position(){
         ++position;
@@ -125,7 +128,7 @@ public class SequenceScanner {
         int i;
         curr_kmer.reset();
         position = start - 1;
-        for (i = 0; i < K && position < sequence_length - 1; ++i) {
+        for (i = 0; i < K && position < get_sequence_length() - 1; ++i) {
             next_position();
             if (get_code(0) > 3) {
                 if (DEBUG) System.out.println("jump_forward");
@@ -144,7 +147,7 @@ public class SequenceScanner {
     }
 
     public int next_kmer() {
-        if (position < sequence_length - 1){
+        if (position < get_sequence_length() - 1){
             next_position();
             if (get_code(0) > 3){
                 if (jump_forward())
@@ -248,7 +251,7 @@ public class SequenceScanner {
                 return (b & 0x0f);
             }
         } else {
-            System.out.println("Wrong genomic position: " + p);
+            System.out.println(p + " is not in range 0.." + database.sequence_length[g][s]);
             return -1;
         }
     }
