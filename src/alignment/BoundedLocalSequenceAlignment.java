@@ -25,12 +25,15 @@ public class BoundedLocalSequenceAlignment {
     private int GAP_OPEN;
     private int GAP_EXT;
     private int MAX_LENGTH;
+    private int[] score_array;
     private int max_i;
     private int max_j;
     private int MAX_BOUND;
     private int bound;
     private char TYPE;
+    private boolean CLIP;
     private int offset;
+    private int m_score = 5, s_score = -10;
     
     /**
      * The constructor of the class
@@ -38,18 +41,20 @@ public class BoundedLocalSequenceAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public BoundedLocalSequenceAlignment(int go, int ge, int max_len, int maxbound, char type) {
+    public BoundedLocalSequenceAlignment(int go, int ge, int max_len, int maxbound, boolean c, char type) {
         int i, j;
         GAP_OPEN = go;
         GAP_EXT = ge;
         MAX_LENGTH = max_len;
         MAX_BOUND = maxbound;
         TYPE = type;
+        CLIP = c;
     // initialize matrixes
         matrix = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
         direction = new char[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
         up = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
         left = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
+        score_array = new int[MAX_LENGTH];
         cigar = new StringBuilder();
         operation_stack = new Stack();
         count_stack = new Stack();
@@ -72,19 +77,6 @@ public class BoundedLocalSequenceAlignment {
             initialize_BLOSUM_matrix();
         else
             System.out.println("Aligner tpre should be N or P");
-        
-        /*seq1 = new StringBuilder("AATCCCTAAACCCTAAACCGGTTTCTCTGGTTGAAAAT");
-        seq2 = new StringBuilder("TTAATCCTTAAATCCCTAAACCCTAAACCGGTTTCTCTGGTTGAAAATCATTGCGTAT");
-        System.out.println(MAX_LENGTH);
-        System.out.println(seq1);
-        System.out.println(seq2);
-        initialize_bound(10, seq1.length());
-        align(seq1, seq2);
-        System.out.println("Score: " + get_score());
-        calculate_cigar();
-        System.out.println("Cigar: " + get_cigar());
-        System.out.println(get_alignment());
-        System.exit(0); */ 
     }
     
     public final void initialize_bound(int b, int query_len){
@@ -957,14 +949,6 @@ public class BoundedLocalSequenceAlignment {
         match['*']['Z'] = -4;
         match['*']['X'] = -4;
         match['*']['*'] = 1;
-        /*seq1 = new StringBuilder("CTCTTTATGAAGAAAAAAGTT");
-        seq2 = new StringBuilder("CTCTTTATGAAGATGAAGAAAAAAGTT");
-        this.align(seq1, seq2);
-        System.out.println(this.get_alignment());
-        calculate_cigar();
-        System.out.println(this.get_cigar());
-        System.out.println(this.get_score());
-        System.exit(0);*/
     }
         
     /**
@@ -978,16 +962,12 @@ public class BoundedLocalSequenceAlignment {
         int m, n;
         seq1 = s1;
         seq2 = s2;
-        similarity_score = Integer.MIN_VALUE;
         m = seq1.length();
         n = seq2.length();
-        //System.out.println("m: " + m + " n: " + n);
-        //System.out.println(s2);
-        //System.out.println(s1);
-        if (m <= MAX_LENGTH){
+        if (m < MAX_LENGTH){
+            similarity_score = Integer.MIN_VALUE;
             /*System.out.println(s2);
             System.out.println(s1);
-            System.out.println("m: " + m + " n: " + n);
             System.out.print("\n    ");
             for (j = 1; j <= 2 * bound + 1; j++) 
                 System.out.print(String.format("%4d", j ));
@@ -1023,11 +1003,16 @@ public class BoundedLocalSequenceAlignment {
                 //System.out.println();
             }
             //System.out.println("Score = "+ matrix[max_i][max_j]);
-            //System.out.println("Coordinates = "+ max_i + " " + max_j);
         } else {
             System.err.println("Sequences are too large for the aligner.");
             System.exit(0);
         }
+        /*System.out.println("m: " + m + " n: " + n);
+        System.out.println("Coordinates = "+ max_i + " " + max_j);
+        System.out.println(this.get_alignment());
+        System.out.println(this.get_cigar());
+        System.out.println("offset: "+ this.get_offset());
+        System.out.println(similarity_score+ "\n");*/
     }
 
     /**
@@ -1037,15 +1022,19 @@ public class BoundedLocalSequenceAlignment {
      * @param s2 Second sequence
      * @return The aligned sequences
      */
+
     public String get_alignment() {
-        int i, j;
+        int i, j, start;
         StringBuilder subject = new StringBuilder();
         StringBuilder query = new StringBuilder();
         subject.setLength(0);
         query.setLength(0);
         i = max_i;
         j = max_j;
+        start = calculate_clip_start();
         while (i > 0 && j > 0) {
+            if (CLIP && i < start)
+                break;
             if (direction[i][j] == 'I') {
                 query.append( seq1.charAt(i-1) );
                 subject.append( '-' );
@@ -1053,22 +1042,28 @@ public class BoundedLocalSequenceAlignment {
                 j = j + 1;
             } else if (direction[i][j] == 'D') {
                 query.append( '-' );
-                subject.append( seq2.charAt(j+i-2) );
+                subject.append( seq2.charAt(j-1) );
                 j = j - 1;
             } else {
                 query.append( seq1.charAt(i-1) );
-                subject.append( seq2.charAt(j+i-2) );
+                subject.append( seq2.charAt(j-1) );
                 i = i - 1;
             }
         } 
-        for (;i > 0; --i, ++j){
+        if (CLIP){
+            for (;i > 0 && j > 1; --i, --j){
+                query.append( seq1.charAt(i-1) );
+                subject.append( seq2.charAt(j+j-2) );
+            }
+        }
+        for (;i > 0; --i){
             query.append( seq1.charAt(i-1) );
             subject.append( '-' );
         }
-        for (;j > 0; --j){
+        for (;j > 1; --j){
             query.append( '-' );
-            subject.append( seq2.charAt(j-1) );
-        }
+            subject.append( seq2.charAt(i+j-2) );
+        }            
         return subject.reverse() + "\n" + query.reverse();
     }
 
@@ -1089,85 +1084,6 @@ public class BoundedLocalSequenceAlignment {
             }
         } 
         return num_matches;
-    }
-
-    public String get_cigar() {
-        int i, j, move_counts = 1, count;
-        char curr_move, prev_move, operation;
-        operation_stack.clear();
-        count_stack.clear();
-        cigar.setLength(0);
-        i = max_i;
-        j = max_j;
-        if (seq1.length() > max_i){
-            prev_move = 'M';
-            move_counts = seq1.length() - max_i;
-        } else {
-            prev_move = direction[i][j];
-            if (prev_move == 'I'){
-                i = i - 1;
-                j = j + 1;
-            }else if (prev_move == 'D')
-                j = j - 1;
-            else {
-                i = i - 1;
-            } 
-        }
-        while (i > 0 && j > 0) {
-            //System.out.println(i+" "+j+ " " +direction[i][j+1-i]);
-            curr_move = direction[i][j];
-            if (curr_move == 'I'){
-                i = i - 1;
-                j = j + 1;
-            }else if (curr_move == 'D')
-                j = j - 1;
-            else {
-                i = i - 1;
-            } 
-            if (prev_move == curr_move)
-                ++move_counts;
-            else{
-                operation_stack.push(prev_move);
-                count_stack.push(move_counts);
-                /*if (operation_stack.size() == 1 && prev_move == 'D'){ //Remove the deletion at the end of the read
-                    operation_stack.pop();
-                    score += (-GAP_OPEN + count_stack.pop());// make up for the penalties
-                } */
-                move_counts = 1;
-            }
-            prev_move = curr_move;
-        } 
-        if (i > 0){
-            //System.out.println(i);
-            if (prev_move == 'M')
-                move_counts += i;
-            else{
-                operation_stack.push(prev_move);
-                count_stack.push(move_counts);
-                prev_move = 'M';
-                move_counts = i; 
-            }
-            j = j - i;
-        }
-        operation_stack.push(prev_move);
-        count_stack.push(move_counts);
-        offset = j;
-
-        /*
-        // Avoid D at the start of cigar only for read alignment
-        if (j > 0){
-            operation_stack.push('D');
-            count_stack.push(j);
-        }
-        */
-
-        while (!operation_stack.isEmpty()){
-            operation = operation_stack.pop();
-            count = count_stack.pop();
-            cigar.append(count).append(operation);
-        }
-        //System.out.println(cigar);
-        return cigar.toString();
     }
    
     public long get_similarity_score(){
@@ -1223,4 +1139,122 @@ public class BoundedLocalSequenceAlignment {
     public int get_offset(){
         return offset;
     }
+    
+    public int calculate_clip_start() {
+        int i, j, k, d, x, y, max_ending_here, max_so_far, start;
+        if (!CLIP)
+            return 1;
+        else {
+            x = i = max_i;
+            j = max_j;
+            while (i > 0 && j > 0) {
+                if (direction[i][j] == 'I') {
+                    score_array[x--] = 0;
+                    i = i - 1;
+                    j = j + 1;
+                } else if (direction[i][j] == 'D') {
+                    j = j - 1;
+                } else {
+                    score_array[x--] = seq1.charAt(i-1) == seq2.charAt(i+j-2) ? m_score : s_score;
+                    i = i - 1;
+                }
+            } 
+            for (;i > 0; --i)
+                score_array[x--] = 0;
+            max_ending_here = max_so_far = score_array[1];
+            k = start = 1;
+                //System.out.print(score_array[0] + " ");
+            for (i = 2; i <= max_i; ++i){
+                //System.out.print(score_array[i] + " ");
+                if (score_array[i] > max_ending_here + score_array[i]){
+                    max_ending_here = score_array[i];
+                    k = i;
+                } else {
+                    max_ending_here = max_ending_here + score_array[i];
+                }
+                if (max_so_far < max_ending_here){
+                    start = k;
+                    max_so_far = max_ending_here;
+                }
+            }
+        }
+        return start;
+    }
+    
+    public String get_cigar() {
+        int i, j, move_counts = 0, count, operations_sum = 0, start;
+        char curr_move, prev_move, operation;
+        operation_stack.clear();
+        count_stack.clear();
+        cigar.setLength(0);
+        start = calculate_clip_start();
+        i = max_i;
+        j = max_j;
+        //System.out.println("start: "+ start + " max_i:"+max_i+" max_j:"+max_j+" "+seq1.length());
+        move_counts = seq1.length() - max_i;
+        if (max_i < seq1.length()){
+            if (CLIP){
+                operation_stack.push('S');
+                count_stack.push(move_counts);
+                move_counts = 0;
+            }
+        }
+        prev_move = 'M';
+        move_counts += 1;
+        --i;
+        /*if (prev_move == 'I'){
+            i = i - 1;
+            j = j + 1;
+        }else if (prev_move == 'D'){
+            j = j - 1;
+        } else {
+            i = i - 1;
+        }*/ 
+        while (i > 0 && j > 0) {
+            //System.out.println(i+" "+j+ " " +direction[i][j]);
+            if (i < start)
+                curr_move = CLIP ? 'S' : 'M';
+            else
+                curr_move = direction[i][j];
+            if (curr_move == 'I'){
+                i = i - 1;
+                j = j + 1;
+            }else if (curr_move == 'D'){
+                j = j - 1;
+            } else {
+                i = i - 1;
+            } 
+            if (prev_move == curr_move)
+                ++move_counts;
+            else{
+                operation_stack.push(prev_move);
+                count_stack.push(move_counts);
+                move_counts = 1;
+            }
+            prev_move = curr_move;
+        } 
+        if (prev_move != 'D'){
+            operation_stack.push(prev_move);
+            count_stack.push(move_counts);
+        }
+        if (i > 0 && j == 0) {
+            operation_stack.push('I');
+            count_stack.push(i);
+        }
+        if (prev_move == 'S' && CLIP)
+            j += move_counts;
+        offset = j - i - 1;
+        while (!operation_stack.isEmpty()){
+            operation = operation_stack.pop();
+            count = count_stack.pop();
+            //System.out.println(count+" "+operation);
+            cigar.append(count).append(operation);
+            //if (operation != 'D')
+            //    operations_sum += count;
+        }
+        //System.out.println(operations_sum + " " + seq1.length());
+        //System.out.println(cigar);
+        return cigar.toString();
+    }
+
 }

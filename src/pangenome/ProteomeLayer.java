@@ -368,7 +368,7 @@ public class ProteomeLayer {
         StringBuilder subject;
         LocalSequenceAlignment aligner;
         public Find_similarities() {
-            aligner = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT,MAX_ALIGNMENT_LENGTH, 'P');
+            aligner = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT,MAX_ALIGNMENT_LENGTH, true, 'P');
             query = new StringBuilder();
             subject = new StringBuilder();
         }

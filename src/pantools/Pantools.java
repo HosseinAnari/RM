@@ -36,6 +36,7 @@ public class Pantools {
     public static String INDEX_DATABASE_PATH = "/databases/index.db/";
     public static String GENOME_DATABASE_PATH = "/databases/genome.db/";
     public static String READS_DATABASE_PATH = "/databases/read.db";
+    public static String OUTPUT_PATH = "";
 
     public static String PATH_TO_THE_PANGENOME_DATABASE;
     public static String PATH_TO_THE_GENOMES_FILE;
@@ -45,20 +46,20 @@ public class Pantools {
     public static String PATH_TO_THE_GENOME_NUMBERS_FILE;
     public static String PATH_TO_THE_FIRST_SRA;
     public static String PATH_TO_THE_SECOND_SRA;
-    public static String MAPPING_NAME = "genome";
     public static String FEATURE = "gene";
     public static double INTERSECTION = 0.08;
     public static double CONTRAST = 8;
     public static double INFLATION = 10.8;
     public static int K_SIZE = -1;
     public static int THRESHOLD = 95;
-    public static int GAP_OPEN = -20;
+    public static int GAP_OPEN = -15;
     public static int GAP_EXT = -1;
     public static int INNER_READS_DISTANCE = 500;
     public static int ANCHORS_DISTANCE = 10000; // The distance between two anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
     public static int cores = Runtime.getRuntime().availableProcessors();
     public static long heapSize = Runtime.getRuntime().maxMemory();
+    public static boolean CLIP = true;
     public static boolean DEBUG;
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
@@ -151,6 +152,10 @@ public class Pantools {
                         PATH_TO_THE_PANGENOME_DATABASE = args[i + 1];
                         System.out.println("PATH_TO_THE_PANGENOME_DATABASE = " + PATH_TO_THE_PANGENOME_DATABASE);
                         break;
+                    case "--out-path": case "-op":
+                        OUTPUT_PATH = args[i + 1];
+                        System.out.println("OUTPUT_PATH = " + OUTPUT_PATH);
+                        break;
                     case "--genomes-file": case "-gf":
                         PATH_TO_THE_GENOMES_FILE = args[i + 1];
                         theDir = new File(PATH_TO_THE_GENOMES_FILE);
@@ -196,7 +201,7 @@ public class Pantools {
                         }
                         System.out.println("PATH_TO_THE_GENOME_NUMBERS_FILE = " + PATH_TO_THE_GENOME_NUMBERS_FILE);
                         break;
-                    case "--first_sra": case "-fs":
+                    case "--first_sra": case "-1":
                         PATH_TO_THE_FIRST_SRA = args[i + 1];
                         theDir = new File(PATH_TO_THE_FIRST_SRA);
                         if (!theDir.exists()) {
@@ -205,7 +210,7 @@ public class Pantools {
                         }
                         System.out.println("PATH_TO_THE_FIRST_SRA = " + PATH_TO_THE_FIRST_SRA);
                         break;
-                    case "--second_sra": case "-ss":
+                    case "--second_sra": case "-2":
                         PATH_TO_THE_SECOND_SRA = args[i + 1];
                         theDir = new File(PATH_TO_THE_SECOND_SRA);
                         if (!theDir.exists()) {
@@ -213,6 +218,11 @@ public class Pantools {
                                 System.exit(1);
                         }
                         System.out.println("PATH_TO_THE_SECOND_SRA = " + PATH_TO_THE_SECOND_SRA);
+                        break;
+                    case "--no_clip": case "-nc":
+                        CLIP = false;
+                        --i;
+                        System.out.println("CLIP = false");
                         break;
                     case "--intersection-rate": case "-ir": 
                         y = Double.parseDouble(args[i + 1]);
@@ -271,7 +281,7 @@ public class Pantools {
                         System.out.println("INFLATION = " + INFLATION);
                         System.out.println("CONTRAST = " + CONTRAST);
                         break;
-                    case "--threads-number": case "-tn":
+                    case "--number-threads": case "-nt":
                         x = Integer.parseInt(args[i + 1]);
                         if (x < cores)
                             THREADS = x;
@@ -304,10 +314,6 @@ public class Pantools {
                     case "--inner_distance": case "-id":
                         INNER_READS_DISTANCE = Integer.parseInt(args[i + 1]);
                         System.out.println("INNER_READS_DISTANCE = " + INNER_READS_DISTANCE);
-                        break;
-                    case "--mapping-name": case "-mn":
-                        MAPPING_NAME = args[i + 1];
-                        System.out.println("MAPPING_NAME = " + MAPPING_NAME);
                         break;
                     case "--feature_type": case "-ft":
                         if (labels.containsKey(args[i + 1]))

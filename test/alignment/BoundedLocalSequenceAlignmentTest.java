@@ -44,102 +44,28 @@ public class BoundedLocalSequenceAlignmentTest {
     @Test
     public void test() {
         int i, j, m, n;
-        BoundedLocalSequenceAlignment instance = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, 5, 'N');
-        StringBuilder seq1 = new StringBuilder("CTTTATGAAGAAAAAAGTT");
-        StringBuilder seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
+        BoundedLocalSequenceAlignment instance = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, 3, true, 'N');
+        instance.initialize_bound(3, 1000);
+        StringBuilder seq1, seq2;
+        seq2 = new StringBuilder("GGGAAAAACTTTATGAAGAAAAAAGTTAAAAAGGG");
+        seq1 = new StringBuilder(   "AAAAACTTTATGAAGAAAAAAGTTAAAAA");
         instance.align(seq1, seq2);
-        int max[] = instance.get_max_coordinates();
-        m = seq1.length();
-        n = seq2.length();
-        System.out.println("Sequence 1 of length: " + m + "\n" + seq1 + "\n");
-        System.out.println("Sequence 2 of length: " + n + "\n" + seq2 + "\n");
-        
-        
-        System.out.print("   ");
-        for (j = 1; j <= 11; j++) 
-            System.out.print(String.format("%3d", j ));
-        System.out.println();
-      //  System.out.print("   ");
-//        for (j = 1; j <= 11; j++) 
-  //          System.out.print(String.format("%3c", seq2.charAt(j-1) ));
-    //    System.out.println();
-        for (i = 1; i <= m; i++) {
-            System.out.print(i + " " + seq1.charAt(i-1));
-            for (j = 1; j <= 11; j++) {
-                System.out.print(String.format("%3c",instance.get_direction(i,j)));
-            }
-            System.out.println();
-        }
-        System.out.println("Coordinates = "+ max[0] + " " + max[1]);
-        System.out.println("Score = "+ instance.get_similarity_score());
-        System.out.println(instance.get_alignment());
-        instance.get_cigar();
-        System.out.println(instance.get_cigar());
-        System.out.println();
-        
-        System.out.print("   ");
-        for (j = 1; j <= 11; j++) 
-            System.out.print(String.format("%3d", j ));
-        System.out.println();
-    //    System.out.print("   ");
-     //   for (j = 1; j <= n; j++) 
-       //     System.out.print(String.format("%3c", seq2.charAt(j-1) ));
-        //System.out.println();
-        for (i = 1; i <= m; i++) {
-            System.out.print(i + " " + seq1.charAt(i-1));
-            for (j = 1; j <= 11; j++) {
-                System.out.print(String.format("%3d", instance.get_matrix(i,j)));
-            }
-            System.out.println();
-        }
-        System.out.println("Coordinates = "+ max[0] + " " + max[1]);
-        System.out.println("Score = "+ instance.get_similarity_score());
-        System.out.println(instance.get_alignment());
-        instance.get_cigar();
-        System.out.println(instance.get_cigar());
-        System.out.println();
-        
-        System.out.print("   ");
-        for (j = 1; j <= 1; j++) 
-            System.out.print(String.format("%3d", j ));
-        System.out.println();
-        //System.out.print("   ");
-        //for (j = 1; j <= n; j++) 
-        //    System.out.print(String.format("%3c", seq2.charAt(j-1) ));
-        //System.out.println();
-        for (i = 1; i <= m; i++) {
-            System.out.print(i + " " + seq1.charAt(i-1));
-            for (j = 1; j <= 11; j++) {
-                System.out.print(String.format("%3d", instance.get_up(i,j)));
-            }
-            System.out.println();
-        }        
-        System.out.println("Coordinates = "+ max[0] + " " + max[1]);
-        System.out.println("Score = "+ instance.get_similarity_score());
-        System.out.println(instance.get_alignment());
-        instance.get_cigar();
-        System.out.println(instance.get_cigar());
-        System.out.println();
-        
-        System.out.print("   ");
-        for (j = 1; j <= 11; j++) 
-            System.out.print(String.format("%3d", j ));
-        System.out.println();
-        //System.out.print("   ");
-        //for (j = 1; j <= n; j++) 
-        //    System.out.print(String.format("%3c", seq2.charAt(j-1) ));
-        //System.out.println();
-        for (i = 1; i <= m; i++) {
-            System.out.print(i + " " + seq1.charAt(i-1));
-            for (j = 1; j <= 11; j++) {
-                System.out.print(String.format("%3d", instance.get_left(i,j)));
-            }
-            System.out.println();
-        } 
-        System.out.println("Coordinates = "+ max[0] + " " + max[1]);
-        System.out.println("Score = "+ instance.get_similarity_score());
-        System.out.println(instance.get_alignment());
-        instance.get_cigar();
-        System.out.println(instance.get_cigar());
-    }
+        seq2 = new StringBuilder("GGGGGGAAAAACTTTATGAAGAAAAAAGTTAAAAA");
+        seq1 = new StringBuilder(   "AAAAACTTTATGAAGAAAAAAGTTAAAAA");
+        instance.align(seq1, seq2);
+        seq2 = new StringBuilder("GGGGAAAAACTTTATGAAGAAAAAAGTTAAAAAGG");
+        seq1 = new StringBuilder(   "AAAAACTTTATGAAGAAAAAAGTTAAAAA");
+        instance.align(seq1, seq2);
+        seq2 = new StringBuilder("GGGGAAAAACTTTATGAAGAAAGTTAAAAAGGGG");
+        seq1 = new StringBuilder(   "AAAAACTTTATGAAGAAAAAAGTTAAAA");
+        instance.align(seq1, seq2);
+        seq2 = new StringBuilder("GGGAAAAACTTTATGAAGAAAAAAGTTAAAAA");
+        seq1 = new StringBuilder(   "AAAAACTTTATGAAGAAAGTTAAAAA");
+        instance.align(seq1, seq2);
+        seq2 = new StringBuilder("GGGAAAAACTTTATGAAGAAAAAAGTTAAAAAGGGGG");
+        seq1 = new StringBuilder(   "GGAAAAACTTTATGAAGAAAAAAGTTAAAAA");
+        instance.align(seq1, seq2);
+        seq2 = new StringBuilder("GGGAAAAACTTTATGAAGAAAAAAGTTAAAAAGGGGG");
+        seq1 = new StringBuilder(   "AAAAACTTTATGAAGAAAAAAGTTAAAAAGG");
+        instance.align(seq1, seq2);    }
 }

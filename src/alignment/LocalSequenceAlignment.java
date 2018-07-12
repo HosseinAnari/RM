@@ -28,6 +28,9 @@ public class LocalSequenceAlignment {
     private long similarity_score;
     private char TYPE;
     private int offset;
+    private int[] score_array;
+    private int m_score = 5, s_score = -10;
+    private boolean CLIP;
     
     /**
      * The constructor of the class
@@ -35,17 +38,19 @@ public class LocalSequenceAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public LocalSequenceAlignment(int gap_open, int gap_ext, int max_length, char type) {
+    public LocalSequenceAlignment(int gap_open, int gap_ext, int max_length, boolean c, char type) {
         int i, j;
         MAX_LENGTH = max_length;
         GAP_OPEN = gap_open;
         GAP_EXT = gap_ext;
+        CLIP = c;
         TYPE = type;
     // initialize matrixes
         matrix = new long[MAX_LENGTH+1][MAX_LENGTH+1];
         direction = new char[MAX_LENGTH + 1][MAX_LENGTH + 1];
         up = new long[MAX_LENGTH+1][MAX_LENGTH+1];
         left = new long[MAX_LENGTH+1][MAX_LENGTH+1];
+        score_array = new int[MAX_LENGTH];
         cigar = new StringBuilder();
         operation_stack = new Stack();
         count_stack = new Stack();
@@ -925,14 +930,6 @@ public class LocalSequenceAlignment {
         match['*']['Z'] = -4;
         match['*']['X'] = -4;
         match['*']['*'] = 1;
-        /*seq1 = new StringBuilder("CTCTTTATGAAGAAAAAAGTT");
-        seq2 = new StringBuilder("CTCTTTATGAAGATGAAGAAAAAAGTT");
-        this.align(seq1, seq2);
-        System.out.println(this.get_alignment());
-        calculate_cigar();
-        System.out.println(this.get_cigar());
-        System.out.println(this.get_score());
-        System.exit(0);*/
     }
 
     /**
@@ -946,33 +943,89 @@ public class LocalSequenceAlignment {
         int m = s1.length(), n = s2.length();
         seq1 = s1;
         seq2 = s2;
-        //System.out.println(s1);
-        //System.out.println(s2);
-        similarity_score = Integer.MIN_VALUE;
-        for (i = 1; i <= m; i++) {
-            for (j = 1; j <= n; j++) {
-                up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
-                left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
-                if (matrix[i-1][j-1] > Math.max( up[i-1][j-1] , left[i-1][j-1]))
-                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i-1][j-1];
-                else if (left[i-1][j-1] > up[i-1][j-1])
-                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + left[i-1][j-1];
-                else
-                    matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + up[i-1][j-1];
-                if (matrix[i][j] > Math.max( up[i][j] , left[i][j]))
-                    direction[i][j] = 'M';
-                else if (left[i][j] > up[i][j])
-                    direction[i][j] = 'D';
-                else
-                    direction[i][j] = 'I';
-                if (matrix[i][j] >= similarity_score){
-                    similarity_score = matrix[i][j];
-                    max_i = i;
-                    max_j = j;
-                }                
+        if(m < MAX_LENGTH){
+            similarity_score = Integer.MIN_VALUE;
+            for (i = 1; i <= m; i++) {
+                for (j = 1; j <= n; j++) {
+                    up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
+                    left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
+                    if (matrix[i-1][j-1] > Math.max( up[i-1][j-1] , left[i-1][j-1]))
+                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i-1][j-1];
+                    else if (left[i-1][j-1] > up[i-1][j-1])
+                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + left[i-1][j-1];
+                    else
+                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + up[i-1][j-1];
+                    if (matrix[i][j] > Math.max( up[i][j] , left[i][j]))
+                        direction[i][j] = 'M';
+                    else if (left[i][j] > up[i][j])
+                        direction[i][j] = 'D';
+                    else
+                        direction[i][j] = 'I';
+                    if (matrix[i][j] >= similarity_score){
+                        similarity_score = matrix[i][j];
+                        max_i = i;
+                        max_j = j;
+                    }                
+                }
+            }
+        } else {
+            System.err.println("Sequences are too large for the aligner.");
+            System.exit(0);
+        }
+        /*System.out.println(s2);
+        System.out.println(s1);
+        System.out.println("m: " + m + " n: " + n);
+        System.out.println("Coordinates = "+ max_i + " " + max_j);
+        System.out.println(this.get_alignment());
+        System.out.println(this.get_cigar());
+        System.out.println("offset: "+ this.get_offset());
+        System.out.println(similarity_score+ "\n");*/
+
+    }    
+    
+    public String get_alignment() {
+        int i, j, start;
+        StringBuilder subject = new StringBuilder();
+        StringBuilder query = new StringBuilder();
+        subject.setLength(0);
+        query.setLength(0);
+        i = max_i;
+        j = max_j;
+        start = calculate_clip_start();
+        while (i > 0 && j > 0) {
+            if (CLIP && i < start)
+                break;
+            if (direction[i][j] == 'I') {
+                query.append( seq1.charAt(i-1) );
+                subject.append( '-' );
+                i = i - 1;
+            } else if (direction[i][j] == 'D') {
+                query.append( '-' );
+                subject.append( seq2.charAt(j-1) );
+                j = j - 1;
+            } else {
+                query.append( seq1.charAt(i-1) );
+                subject.append( seq2.charAt(j-1) );
+                i = i - 1;
+                j = j - 1;
+            }
+        } 
+        if (CLIP){
+            for (;i > 0 && j > 0; --i, --j){
+                query.append( seq1.charAt(i-1) );
+                subject.append( seq2.charAt(j-1) );
             }
         }
-    }    
+        for (;i > 0; --i){
+            query.append( seq1.charAt(i-1) );
+            subject.append( '-' );
+        }
+        for (;j > 0; --j){
+            query.append( '-' );
+            subject.append( seq2.charAt(j-1) );
+        }            
+        return subject.reverse() + "\n" + query.reverse();
+    }
 
     /**
      * The similarity score of the shorter protein with itself  
@@ -1009,37 +1062,82 @@ public class LocalSequenceAlignment {
         return similarity_score * 20 / seq1.length();
     }
     
+    public int calculate_clip_start() {
+        int i, j, k, d, x, y, max_ending_here, max_so_far, start;
+        if (!CLIP)
+            return 1;
+        else {
+            x = i = max_i;
+            j = max_j;
+            while (i > 0 && j > 0) {
+                if (direction[i][j] == 'I') {
+                    score_array[x--] = 0;
+                    i = i - 1;
+                } else if (direction[i][j] == 'D') {
+                    j = j - 1;
+                } else {
+                    score_array[x--] = seq1.charAt(i-1) == seq2.charAt(j-1) ? m_score : s_score;
+                    i = i - 1;
+                    j = j - 1;
+                }
+            } 
+            for (;i > 0; --i)
+                score_array[x--] = 0;
+            max_ending_here = max_so_far = score_array[1];
+            k = start = 1;
+                //System.out.print(score_array[0] + " ");
+            for (i = 2; i <= max_i; ++i){
+                //System.out.print(score_array[i] + " ");
+                if (score_array[i] > max_ending_here + score_array[i]){
+                    max_ending_here = score_array[i];
+                    k = i;
+                } else {
+                    max_ending_here = max_ending_here + score_array[i];
+                }
+                if (max_so_far < max_ending_here){
+                    start = k;
+                    max_so_far = max_ending_here;
+                }
+            }
+        }
+        return start;
+    }
+    
     public String get_cigar() {
-        int i, j, move_counts = 1, count;
+        int i, j, move_counts, count, operations_sum = 0, start;
         char curr_move, prev_move, operation;
-        offset = 0;
         operation_stack.clear();
         count_stack.clear();
         cigar.setLength(0);
+        start = calculate_clip_start();
         i = max_i;
         j = max_j;
-        if (seq1.length() > max_i){
-            prev_move = 'M';
-            move_counts = seq1.length() - max_i;
+        //System.out.println("start: "+ start + " max_i:"+max_i+" max_j:"+max_j);
+        if (max_i < seq1.length()){
+            operation_stack.push('S');
+            count_stack.push(seq1.length() - max_i);
+        } 
+        prev_move = direction[i][j];
+        move_counts = 1;
+        if (prev_move == 'I'){
+            i = i - 1;
+        }else if (prev_move == 'D'){
+            j = j - 1;
         } else {
-            prev_move = direction[i][j];
-            if (prev_move == 'I'){
-                i = i - 1;
-            }else if (prev_move == 'D')
-                j = j - 1;
-            else {
-                i = i - 1;
-                j = j - 1;
-            } 
-        }
+            i = i - 1;
+            j = j - 1;
+        } 
         while (i > 0 && j > 0) {
             //System.out.println(i+" "+j+ " " +direction[i][j+1-i]);
-            curr_move = direction[i][j];
+            if (i < start)
+                curr_move = 'S';
+            else
+                curr_move = direction[i][j];
             if (curr_move == 'I'){
                 i = i - 1;
-            }else if (curr_move == 'D')
+            }else if (curr_move == 'D'){
                 j = j - 1;
-            else {
+            } else {
                 i = i - 1;
                 j = j - 1;
             } 
@@ -1048,46 +1146,34 @@ public class LocalSequenceAlignment {
             else{
                 operation_stack.push(prev_move);
                 count_stack.push(move_counts);
-                /*if (operation_stack.size() == 1 && prev_move == 'D'){ //Remove the deletion at the end of the read
-                    operation_stack.pop();
-                    score += (-GAP_OPEN + count_stack.pop());// make up for the penalties
-                } */
                 move_counts = 1;
             }
             prev_move = curr_move;
         } 
-        if (i > 0){
-            //System.out.println(i);
-            if (prev_move == 'M')
-                move_counts += i;
-            else{
-                operation_stack.push(prev_move);
-                count_stack.push(move_counts);
-                prev_move = 'M';
-                move_counts = i; 
-            }
+        if (prev_move != 'D'){
+            operation_stack.push(prev_move);
+            count_stack.push(move_counts);
         }
-        operation_stack.push(prev_move);
-        count_stack.push(move_counts);
-        offset = j + 1;
-
-        /*
-        // Avoid D at the start of cigar only for read alignment
-        if (j > 0){
-            operation_stack.push('D');
-            count_stack.push(j);
+        if (i > 0 && j == 0) {
+            operation_stack.push('I');
+            count_stack.push(i);
         }
-        */
-
+        if (prev_move == 'S')
+            j += move_counts;
+        offset = j - i;
         while (!operation_stack.isEmpty()){
             operation = operation_stack.pop();
             count = count_stack.pop();
+            //System.out.println(count+" "+operation);
             cigar.append(count).append(operation);
+            //if (operation != 'D')
+            //    operations_sum += count;
         }
+        //System.out.println(operations_sum + " " + seq1.length());
         //System.out.println(cigar);
         return cigar.toString();
     }
-   
+    
     public int get_offset(){
         return offset;
     }
