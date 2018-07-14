@@ -536,7 +536,7 @@ public class GenomeLayer {
                         for (count = 0, i = 0; i < n; ++i) {
                             ref_start = locations[mate][genome][sequence].get(i);
                             //System.out.print(ref_start + " ");
-                            if (ref_start - prev_start > MAXBOUND){ 
+                            if (ref_start - prev_start > MINBOUND){ 
                                 hit_counts.add(new int[]{first_start, count});
                                 count = 1;
                                 first_start = ref_start;

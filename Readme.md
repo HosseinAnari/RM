@@ -158,6 +158,26 @@ PanTools commands
    --threads-number or -tn (default = 1) 
       gives the number of parallel working threads
 
+<map or m>
+   To map single or paired-end reads to all or a sebset of constituent genomes.
+
+   <argument keys>
+   --database_path or -dp
+      gives path to the pangenome database. 
+   -1 
+      gives a text file containing path to the first short-read archive in FASTQ
+      or FASTA format. 
+   -2 
+      optionally, gives a text file containing path to the second short-read 
+      archive in FASTQ or FASTA format. 
+   --genome-numbers or -gn
+      gives a text file containing genome_numbers to map reads against in 
+      each line. 
+   --output-path or -op (default: database path determined by -dp)
+      path to the output SAM files naked like pantools_x.sam.
+   --threads-number or -tn (default = 1) 
+      gives the number of parallel working threads
+
 <version or v>
    To show the versions of PanTools and Neo4j.
    

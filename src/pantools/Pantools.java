@@ -281,7 +281,7 @@ public class Pantools {
                         System.out.println("INFLATION = " + INFLATION);
                         System.out.println("CONTRAST = " + CONTRAST);
                         break;
-                    case "--number-threads": case "-nt":
+                    case "--threads_number": case "-tn":
                         x = Integer.parseInt(args[i + 1]);
                         if (x < cores)
                             THREADS = x;
@@ -545,6 +545,26 @@ public class Pantools {
 "   --relaxation or rn (default 1)\n" +
 "      gives the relaxation in homology calls. Should be in range [1, 8], \n" +
 "      from strict to relaxed.\n" +
+"   --threads-number or -tn (default = 1) \n" +
+"      gives the number of parallel working threads\n" +
+"\n" +
+"<map or m>\n" +
+"   To map single or paired-end reads to all or a sebset of constituent genomes.\n" +
+"\n" +
+"   <argument keys>\n" +
+"   --database_path or -dp\n" +
+"      gives path to the pangenome database. \n" +
+"   -1 \n" +
+"      gives a text file containing path to the first short-read archive in FASTQ\n" +
+"      or FASTA format. \n" +
+"   -2 \n" +
+"      optionally, gives a text file containing path to the second short-read \n" +
+"      archive in FASTQ or FASTA format. \n" +
+"   --genome-numbers or -gn\n" +
+"      gives a text file containing genome_numbers to map reads against in \n" +
+"      each line. \n" +
+"   --output-path or -op (default: database path determined by -dp)\n" +
+"      path to the output SAM files naked like pantools_x.sam.\n" +
 "   --threads-number or -tn (default = 1) \n" +
 "      gives the number of parallel working threads\n" +
 "\n" +
