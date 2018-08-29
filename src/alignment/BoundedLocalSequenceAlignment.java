@@ -960,37 +960,31 @@ public class BoundedLocalSequenceAlignment {
     public void align(StringBuilder s1, StringBuilder s2) {
         int i, j, stop;
         int m, n;
+        long d;
         seq1 = s1;
         seq2 = s2;
         m = seq1.length();
         n = seq2.length();
         if (m < MAX_LENGTH){
             similarity_score = Integer.MIN_VALUE;
-            /*System.out.println(s2);
-            System.out.println(s1);
-            System.out.print("\n    ");
-            for (j = 1; j <= 2 * bound + 1; j++) 
-                System.out.print(String.format("%4d", j ));
-            System.out.println();*/
             for (i = 1; i <= m; i++) {
-                //System.out.print(i + String.format("%4c", seq1.charAt(i-1) ));
+                //System.out.print(seq1.charAt(i-1));
                 stop = 2 * bound + 1;
                 for (j = 1; j <= stop; j++) {
                     up[i][j] = Math.max( up[i-1][j+1] + GAP_EXT , Math.max(matrix[i-1][j+1], left[i-1][j+1]) + GAP_OPEN + GAP_EXT);
                     left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
-                    if (matrix[i - 1][j] > Math.max( up[i-1][j] , left[i-1][j]))
-                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j+i-2)] + matrix[i - 1][j];
-                    else if (left[i-1][j] > up[i-1][j])
-                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j+i-2)] + left[i-1][j];
-                    else
-                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j+i-2)] + up[i-1][j];
-                    if (matrix[i][j] > Math.max( up[i][j] , left[i][j]))
+                    d = match[seq1.charAt(i-1)][seq2.charAt(j+i-2)] + matrix[i-1][j];
+                    if (d >= Math.max( up[i][j] , left[i][j])){
+                        matrix[i][j] = d;
                         direction[i][j] = 'M';
-                    else if (left[i][j] > up[i][j])
+                    } else if (left[i][j] > up[i][j]){
+                        matrix[i][j] = left[i][j];
                         direction[i][j] = 'D';
-                    else
+                    } else {
+                        matrix[i][j] = up[i][j];
                         direction[i][j] = 'I';
-                    if (similarity_score <= matrix[i][j]){
+                    }
+                    if (matrix[i][j] >= similarity_score){
                         similarity_score = matrix[i][j];
                         max_i = i;
                         max_j = j;
@@ -1002,7 +996,6 @@ public class BoundedLocalSequenceAlignment {
                 }
                 //System.out.println();
             }
-            //System.out.println("Score = "+ matrix[max_i][max_j]);
         } else {
             System.err.println("Sequences are too large for the aligner.");
             System.exit(0);
@@ -1042,18 +1035,18 @@ public class BoundedLocalSequenceAlignment {
                 j = j + 1;
             } else if (direction[i][j] == 'D') {
                 query.append( '-' );
-                subject.append( seq2.charAt(j-1) );
+                subject.append( seq2.charAt(j+i-2) );
                 j = j - 1;
             } else {
                 query.append( seq1.charAt(i-1) );
-                subject.append( seq2.charAt(j-1) );
+                subject.append( seq2.charAt(j+i-2) );
                 i = i - 1;
             }
         } 
         if (CLIP){
             for (;i > 0 && j > 1; --i, --j){
                 query.append( seq1.charAt(i-1) );
-                subject.append( seq2.charAt(j+j-2) );
+                subject.append( seq2.charAt(j+i-2) );
             }
         }
         for (;i > 0; --i){

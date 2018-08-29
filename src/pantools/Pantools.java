@@ -35,7 +35,6 @@ public class Pantools {
     public static String GRAPH_DATABASE_PATH = "/databases/graph.db/";
     public static String INDEX_DATABASE_PATH = "/databases/index.db/";
     public static String GENOME_DATABASE_PATH = "/databases/genome.db/";
-    public static String READS_DATABASE_PATH = "/databases/read.db";
     public static String OUTPUT_PATH = "";
 
     public static String PATH_TO_THE_PANGENOME_DATABASE;
@@ -52,9 +51,8 @@ public class Pantools {
     public static double INFLATION = 10.8;
     public static int K_SIZE = -1;
     public static int THRESHOLD = 95;
-    public static int GAP_OPEN = -15;
+    public static int GAP_OPEN = -20;
     public static int GAP_EXT = -1;
-    public static int INNER_READS_DISTANCE = 500;
     public static int ANCHORS_DISTANCE = 10000; // The distance between two anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
     public static int cores = Runtime.getRuntime().availableProcessors();
@@ -310,10 +308,6 @@ public class Pantools {
                             System.exit(1);
                         }
                         System.out.println("GAP_EXT = " + GAP_EXT);
-                        break;
-                    case "--inner_distance": case "-id":
-                        INNER_READS_DISTANCE = Integer.parseInt(args[i + 1]);
-                        System.out.println("INNER_READS_DISTANCE = " + INNER_READS_DISTANCE);
                         break;
                     case "--feature_type": case "-ft":
                         if (labels.containsKey(args[i + 1]))

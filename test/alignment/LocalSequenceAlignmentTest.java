@@ -42,28 +42,10 @@ public class LocalSequenceAlignmentTest {
     @Test
     public void test(){
         int i, j, m, n;
-        LocalSequenceAlignment instance = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, true, 'N');
+        LocalSequenceAlignment instance = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, false, 'N');
         StringBuilder seq1, seq2;
-        seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        seq1 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAAGGGGGGGG");
-        instance.align(seq1, seq2);
-        seq2 = new StringBuilder("GGAAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        seq1 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        instance.align(seq1, seq2);
-        seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAAGG");
-        seq1 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        instance.align(seq1, seq2);
-        seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAGTTAAAAA");
-        seq1 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        instance.align(seq1, seq2);
-        seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        seq1 = new StringBuilder("AAAAACTTTATGAAGAAAAGTTAAAAA");
-        instance.align(seq1, seq2);
-        seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        seq1 = new StringBuilder("GGAAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        instance.align(seq1, seq2);
-        seq2 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAA");
-        seq1 = new StringBuilder("AAAAACTTTATGAAGAAAAAAGTTAAAAAGG");
+        seq2 = new StringBuilder("AGTAGCAAATTAAGAGAACAAAA");
+        seq1 = new StringBuilder(  "AGGCAAATTAAGAGAACAA");
         instance.align(seq1, seq2);
     }
     

@@ -941,32 +941,41 @@ public class LocalSequenceAlignment {
     public void align(StringBuilder s1, StringBuilder s2) {
         int i, j;
         int m = s1.length(), n = s2.length();
+        long d, u, l;
         seq1 = s1;
         seq2 = s2;
         if(m < MAX_LENGTH){
             similarity_score = Integer.MIN_VALUE;
+            /*for (j = 1; j <= n; j++) 
+                System.out.print(String.format("%4c", seq2.charAt(j-1) ));
+            System.out.println();*/
             for (i = 1; i <= m; i++) {
+                //System.out.print(seq1.charAt(i-1));
                 for (j = 1; j <= n; j++) {
                     up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
                     left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
-                    if (matrix[i-1][j-1] > Math.max( up[i-1][j-1] , left[i-1][j-1]))
-                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i-1][j-1];
-                    else if (left[i-1][j-1] > up[i-1][j-1])
-                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + left[i-1][j-1];
-                    else
-                        matrix[i][j] = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + up[i-1][j-1];
-                    if (matrix[i][j] > Math.max( up[i][j] , left[i][j]))
+                    d = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i-1][j-1];
+                    if (d >= Math.max( up[i][j] , left[i][j])){
+                        matrix[i][j] = d;
                         direction[i][j] = 'M';
-                    else if (left[i][j] > up[i][j])
+                    } else if (left[i][j] > up[i][j]){
+                        matrix[i][j] = left[i][j];
                         direction[i][j] = 'D';
-                    else
+                    } else {
+                        matrix[i][j] = up[i][j];
                         direction[i][j] = 'I';
+                    }
                     if (matrix[i][j] >= similarity_score){
                         similarity_score = matrix[i][j];
                         max_i = i;
                         max_j = j;
                     }                
+                    //System.out.print(String.format("%4d", matrix[i][j] ));
+                    //System.out.print(String.format("%4d", left[i][j] ));
+                    //System.out.print(String.format("%4d", up[i][j] ));
+                    //System.out.print(String.format("%4c", direction[i][j] ));
                 }
+                //System.out.println();
             }
         } else {
             System.err.println("Sequences are too large for the aligner.");
