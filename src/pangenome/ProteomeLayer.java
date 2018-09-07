@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.neo4j.io.fs.FileUtils;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -117,7 +119,11 @@ public class ProteomeLayer {
                 pangenome_node = graphDb.findNodes(pangenome_label).next();
                 proteins_iterator = graphDb.findNodes(mRNA_label);
                 while (proteins_iterator.hasNext())
-                    proteins.offer(proteins_iterator.next());
+                    try {
+                        proteins.put(proteins_iterator.next());
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(ProteomeLayer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 proteins_iterator.close();
                 tx.success();
             }
@@ -315,7 +321,7 @@ public class ProteomeLayer {
                                             crossing_protein = (String)crossing_protein_node.getProperty("protein");
                                             shorter_len = Math.min(protein_length, crossing_protein.length());
                                             if (counter >= frac * (shorter_len - PEPTIDE_SIZE + 1)){
-                                                intersections.offer(new intersection(protein_node, crossing_protein_node,0));
+                                                intersections.put(new intersection(protein_node, crossing_protein_node,0));
                                                 ++num_ins;
                                             }
                                         }
@@ -329,7 +335,7 @@ public class ProteomeLayer {
                                     crossing_protein = (String)crossing_protein_node.getProperty("protein");
                                     shorter_len = Math.min(protein_length, crossing_protein.length());
                                     if (counter >= frac * (shorter_len - PEPTIDE_SIZE + 1)){
-                                        intersections.offer(new intersection(protein_node, crossing_protein_node,0));
+                                        intersections.put(new intersection(protein_node, crossing_protein_node,0));
                                         ++num_ins;
                                     }
                                 }
@@ -344,7 +350,7 @@ public class ProteomeLayer {
                     System.out.print("0 ......................................... 100\n  "); 
                 // Signify the end of intersections queue.    
                     for (i = 0; i < THREADS; ++i)
-                        intersections.offer(new intersection(null, null,-1));// end of queue
+                        intersections.put(new intersection(null, null,-1));// end of queue
                 } catch(InterruptedException e){
                     System.err.println(e.getMessage());
                 }
@@ -399,7 +405,7 @@ public class ProteomeLayer {
                         else
                             ints.similarity = protein_similarity(protein2, protein1);
                         if (ints.similarity > threshold){
-                            similarities.offer(ints);
+                            similarities.put(ints);
                             num_similarities.getAndIncrement();
                         }
                         ints = intersections.take();
@@ -418,7 +424,7 @@ public class ProteomeLayer {
                         }
                     }
                 // Signify the end of the similarities queue.   
-                    similarities.offer(new intersection(null, null,0));
+                    similarities.put(new intersection(null, null,0));
                     tx.success();
                 }
             }catch(InterruptedException e){
@@ -515,14 +521,14 @@ public class ProteomeLayer {
                     protein_node = proteins.take();
                     breadth_first_search(component, protein_node);
                     if (component.size() > 0){ 
-                        components.offer(component);
+                        components.put(component);
                         num_components.getAndIncrement();
                         component = new LinkedList();
                     }
                 } 
             // Signifies the end of the components queue for all the threads    
                 for (i = 0; i < THREADS; ++i)
-                   components.offer(new LinkedList());
+                   components.put(new LinkedList());
             } catch(InterruptedException e){
                 System.err.println(e.getMessage());
             }
@@ -591,7 +597,7 @@ public class ProteomeLayer {
                 component = components.take();
                 while (!component.isEmpty()) {// Not finished
                     if (component.size() == 1){
-                        homology_groups_list.offer(component);
+                        homology_groups_list.put(component);
                     }
                     else
                         break_component(component, pangenome_path);
@@ -607,7 +613,7 @@ public class ProteomeLayer {
          * @param component The similarity component
          * @param pangenome_path The path to the current graph database
          */   
-        void break_component(LinkedList<Node> component, String pangenome_path){
+        void break_component(LinkedList<Node> component, String pangenome_path) throws InterruptedException{
             int i, group_size, wating_time, time;
             double infl;
             LinkedList<Node> homology_group, singletons_group = new LinkedList();
@@ -632,7 +638,7 @@ public class ProteomeLayer {
             }
             if (infl >= 30 ){
                 System.err.println("Failed to split group ID = " + component.getFirst().getId());
-                homology_groups_list.offer(component);
+                homology_groups_list.put(component);
             } else {
                 try (Transaction tx = graphDb.beginTx()) {
                     try{
@@ -647,14 +653,14 @@ public class ProteomeLayer {
                                 homology_group = new LinkedList();
                                 for (i = 0; i < fields.length; ++i)
                                     homology_group.add(graphDb.getNodeById(Long.parseLong(fields[i])));
-                                homology_groups_list.offer(homology_group);
+                                homology_groups_list.put(homology_group);
                             } else { // if is a singleton group
                                 singletons_group.add(graphDb.getNodeById(Long.parseLong(fields[0])));
                             }
                         }
                     // put all singletons of the component in one homology groups    
                         if (singletons_group.size() > 0){
-                                homology_groups_list.offer(singletons_group);
+                                homology_groups_list.put(singletons_group);
                         }
                         clusters_file.close();
                         new File(clusters_path).delete();

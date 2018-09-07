@@ -1,5 +1,8 @@
 package alignment;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import static htsjdk.samtools.CigarOperator.characterToEnum;
 import java.util.Stack;
 
 /**
@@ -1112,12 +1115,12 @@ public class LocalSequenceAlignment {
         return start;
     }
     
-    public String get_cigar() {
+    public Cigar get_cigar() {
         int i, j, move_counts, count, operations_sum = 0, start;
         char curr_move, prev_move, operation;
+        Cigar cigar = new Cigar();
         operation_stack.clear();
         count_stack.clear();
-        cigar.setLength(0);
         start = calculate_clip_start();
         i = max_i;
         j = max_j;
@@ -1174,13 +1177,13 @@ public class LocalSequenceAlignment {
             operation = operation_stack.pop();
             count = count_stack.pop();
             //System.out.println(count+" "+operation);
-            cigar.append(count).append(operation);
+            cigar.add(new CigarElement(count, characterToEnum(operation)));
             //if (operation != 'D')
             //    operations_sum += count;
         }
         //System.out.println(operations_sum + " " + seq1.length());
         //System.out.println(cigar);
-        return cigar.toString();
+        return cigar;
     }
     
     public int get_offset(){

@@ -58,6 +58,8 @@ public class Pantools {
     public static int cores = Runtime.getRuntime().availableProcessors();
     public static long heapSize = Runtime.getRuntime().maxMemory();
     public static boolean CLIP = true;
+    public static boolean BAMFORMAT = false;
+    public static boolean COMPETITIVE = false;
     public static boolean DEBUG;
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
@@ -221,6 +223,16 @@ public class Pantools {
                         CLIP = false;
                         --i;
                         System.out.println("CLIP = false");
+                        break;
+                    case "--bam-format": case "-bf":
+                        BAMFORMAT = true;
+                        --i;
+                        System.out.println("BAMFORMAT = true");
+                        break;
+                    case "--competitive-mapping": case "-cm":
+                        COMPETITIVE = true;
+                        --i;
+                        System.out.println("COMPETITIVE = true");
                         break;
                     case "--intersection-rate": case "-ir": 
                         y = Double.parseDouble(args[i + 1]);

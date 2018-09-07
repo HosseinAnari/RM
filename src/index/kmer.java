@@ -165,9 +165,9 @@ public class kmer {
                 }
             }
         } else{
-            //kmer2.set_fwd_suffix(Arrays.clone(kmer1.get_fwd_suffix()));
-            //kmer2.set_fwd_prefix(kmer1.get_fwd_prefix());
-            kmer2 = kmer1;
+            kmer2.set_fwd_suffix(Arrays.clone(kmer1.get_fwd_suffix()));
+            kmer2.set_fwd_prefix(kmer1.get_fwd_prefix());
+            //kmer2 = kmer1;
         }
         kmer2.canonical = true; // to be found by find()
     }

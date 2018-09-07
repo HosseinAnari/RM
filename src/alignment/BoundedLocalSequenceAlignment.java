@@ -1,5 +1,9 @@
 package alignment;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import static htsjdk.samtools.CigarOperator.characterToEnum;
 import java.util.LinkedList;
 import java.util.Stack;
 
@@ -18,7 +22,7 @@ public class BoundedLocalSequenceAlignment {
     private long left[][];
     private StringBuilder seq1;
     private StringBuilder seq2;
-    private StringBuilder cigar;
+    private Cigar cigar;
     private Stack<Character> operation_stack;
     private Stack<Integer> count_stack;
     private long similarity_score;
@@ -55,7 +59,6 @@ public class BoundedLocalSequenceAlignment {
         up = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
         left = new long[MAX_LENGTH + 1][2 * MAX_BOUND + 3];
         score_array = new int[MAX_LENGTH];
-        cigar = new StringBuilder();
         operation_stack = new Stack();
         count_stack = new Stack();
         direction[0][0] = 'M';
@@ -1174,12 +1177,12 @@ public class BoundedLocalSequenceAlignment {
         return start;
     }
     
-    public String get_cigar() {
+    public Cigar get_cigar() {
         int i, j, move_counts = 0, count, operations_sum = 0, start;
         char curr_move, prev_move, operation;
         operation_stack.clear();
         count_stack.clear();
-        cigar.setLength(0);
+        cigar = new Cigar();
         start = calculate_clip_start();
         i = max_i;
         j = max_j;
@@ -1241,13 +1244,13 @@ public class BoundedLocalSequenceAlignment {
             operation = operation_stack.pop();
             count = count_stack.pop();
             //System.out.println(count+" "+operation);
-            cigar.append(count).append(operation);
+            cigar.add(new CigarElement(count, characterToEnum(operation)));
             //if (operation != 'D')
             //    operations_sum += count;
         }
         //System.out.println(operations_sum + " " + seq1.length());
         //System.out.println(cigar);
-        return cigar.toString();
+        return cigar;
     }
 
 }
