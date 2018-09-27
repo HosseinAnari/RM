@@ -46,24 +46,32 @@ public class Pantools {
     public static String PATH_TO_THE_FIRST_SRA;
     public static String PATH_TO_THE_SECOND_SRA;
     public static String FEATURE = "gene";
-    public static double INTERSECTION = 0.08;
+
+    public static double INTERSECTION_RATE = 0.08;
     public static double CONTRAST = 8;
-    public static double INFLATION = 10.8;
+    public static double MCL_INFLATION = 10.8;
+    public static int MIN_PROTEIN_IDENTITY = 95;
+
     public static int K_SIZE = -1;
-    public static int THRESHOLD = 95;
-    public static int GAP_OPEN = -20;
+    public static int MAX_ALIGNMENT_LENGTH = 1000;
+    public static int GAP_OPEN = -15;
     public static int GAP_EXT = -1;
     public static int ANCHORS_DISTANCE = 10000; // The distance between two anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
     public static int cores = Runtime.getRuntime().availableProcessors();
     public static long heapSize = Runtime.getRuntime().maxMemory();
-    public static boolean CLIP = true;
-    public static boolean BAMFORMAT = false;
-    public static boolean COMPETITIVE = false;
     public static boolean DEBUG;
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
-    public static Map<String,Label> labels;
+    
+    public static double MIN_MAPPING_SCORE = 20.0;
+    public static int NUM_KMER_SAMPLES = 20;
+    public static int MAX_NUM_LOCATIONS = 20;
+    public static int MIN_HIT_LENGTH = 17;
+    public static int ALIGNMENT_BOUND = 7;    
+    public static int CLIPPING_STRINGENCY = 2; // 0, 1, 2, 0r 3    
+    public static boolean BAMFORMAT = false;
+    public static boolean COMPETITIVE_MODE = false;
     
     public static Label pangenome_label = Label.label("pangenome");
     public static Label genome_label = Label.label("genome");
@@ -107,6 +115,7 @@ public class Pantools {
     public static long num_bases;
     public static Node db_node;
     private static String[] label_strings;
+    public static Map<String,Label> labels;
 
     public static GenomeLayer seqLayer;
     public static AnnotationLayer annLayer;
@@ -201,68 +210,35 @@ public class Pantools {
                         }
                         System.out.println("PATH_TO_THE_GENOME_NUMBERS_FILE = " + PATH_TO_THE_GENOME_NUMBERS_FILE);
                         break;
-                    case "--first_sra": case "-1":
-                        PATH_TO_THE_FIRST_SRA = args[i + 1];
-                        theDir = new File(PATH_TO_THE_FIRST_SRA);
-                        if (!theDir.exists()) {
-                                System.out.println(PATH_TO_THE_FIRST_SRA + " does not exist!");
-                                System.exit(1);
-                        }
-                        System.out.println("PATH_TO_THE_FIRST_SRA = " + PATH_TO_THE_FIRST_SRA);
-                        break;
-                    case "--second_sra": case "-2":
-                        PATH_TO_THE_SECOND_SRA = args[i + 1];
-                        theDir = new File(PATH_TO_THE_SECOND_SRA);
-                        if (!theDir.exists()) {
-                                System.out.println(PATH_TO_THE_SECOND_SRA + " does not exist!");
-                                System.exit(1);
-                        }
-                        System.out.println("PATH_TO_THE_SECOND_SRA = " + PATH_TO_THE_SECOND_SRA);
-                        break;
-                    case "--no_clip": case "-nc":
-                        CLIP = false;
-                        --i;
-                        System.out.println("CLIP = false");
-                        break;
-                    case "--bam-format": case "-bf":
-                        BAMFORMAT = true;
-                        --i;
-                        System.out.println("BAMFORMAT = true");
-                        break;
-                    case "--competitive-mapping": case "-cm":
-                        COMPETITIVE = true;
-                        --i;
-                        System.out.println("COMPETITIVE = true");
-                        break;
                     case "--intersection-rate": case "-ir": 
                         y = Double.parseDouble(args[i + 1]);
                         if (y >= 0.001 && y <= 0.1)
-                            INTERSECTION = y;
+                            INTERSECTION_RATE = y;
                         else {
-                            System.out.println("Choose INTERSECTION in the range [0.001..0.1] or do not specify it to use the default value.");
+                            System.out.println("Choose INTERSECTION_RATE in the range [0.001..0.1] or do not specify it to use the default value.");
                             System.exit(1);
                         }
-                        System.out.println("INTERSECTION = " + INTERSECTION);
+                        System.out.println("INTERSECTION_RATE = " + INTERSECTION_RATE);
                         break;
                     case "--similarity-threshold": case "-st": 
                         x = Integer.parseInt(args[i + 1]);
                         if (x > 0 && x < 100)
-                            THRESHOLD = x;
+                            MIN_PROTEIN_IDENTITY = x;
                         else {
-                            System.out.println("Choose THRESHOLD in the range ]0..100[ or do not specify it to use the default value.");
+                            System.out.println("Choose MIN_PROTEIN_IDENTITY in the range ]0..100[ or do not specify it to use the default value.");
                             System.exit(1);
                         }
-                        System.out.println("THRESHOLD = " + THRESHOLD);
+                        System.out.println("MIN_PROTEIN_IDENTITY = " + MIN_PROTEIN_IDENTITY);
                         break;
                     case "--mcl-inflation": case "-mi": 
                         y = Double.parseDouble(args[i + 1]);
                         if (y > 1 && y < 19)
-                            INFLATION = y;
+                            MCL_INFLATION = y;
                         else {
-                            System.out.println("Choose INFLATION in the range ]1.0..19.0[ or do not specify it to use the default value.");
+                            System.out.println("Choose MCL_INFLATION in the range ]1.0..19.0[ or do not specify it to use the default value.");
                             System.exit(1);
                         }
-                        System.out.println("INFLATION = " + INFLATION);
+                        System.out.println("MCL_INFLATION = " + MCL_INFLATION);
                         break;
                     case "--contrast": case "-ct": 
                         y = Double.parseDouble(args[i + 1]);
@@ -277,18 +253,18 @@ public class Pantools {
                     case "--relaxation": case "-rn": 
                         x = Integer.parseInt(args[i + 1]);
                         if (x >= 1 && x <= 8){
-                            INTERSECTION = new double[] {0, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01}[x];
-                            THRESHOLD = new int[]   {0,95, 85, 75, 65, 55, 45, 35, 25}[x];
-                            INFLATION = new double[]{0, 10.8, 9.6, 8.4, 7.2, 6.0, 4.8, 3.6, 2.4}[x];
+                            INTERSECTION_RATE = new double[] {0, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01}[x];
+                            MIN_PROTEIN_IDENTITY = new int[]   {0,95, 85, 75, 65, 55, 45, 35, 25}[x];
+                            MCL_INFLATION = new double[]{0, 10.8, 9.6, 8.4, 7.2, 6.0, 4.8, 3.6, 2.4}[x];
                             CONTRAST = new double[] {0,8, 7, 6, 5, 4, 3, 2, 1 }[x];
                         }
                         else {
                             System.out.println("Choose RELAXATION in the range [1..8] or do not specify it to use the default values.");
                             System.exit(1);
                         }
-                        System.out.println("INTERSECTION = " + INTERSECTION);
-                        System.out.println("THRESHOLD = " + THRESHOLD);
-                        System.out.println("INFLATION = " + INFLATION);
+                        System.out.println("INTERSECTION = " + INTERSECTION_RATE);
+                        System.out.println("MIN_PROTEIN_IDENTITY = " + MIN_PROTEIN_IDENTITY);
+                        System.out.println("MCL_INFLATION = " + MCL_INFLATION);
                         System.out.println("CONTRAST = " + CONTRAST);
                         break;
                     case "--threads_number": case "-tn":
@@ -329,6 +305,104 @@ public class Pantools {
                             System.exit(1);
                         }
                         System.out.println("FEATURE = " + FEATURE);
+                        break;
+                    case "--first_sra": case "-1":
+                        PATH_TO_THE_FIRST_SRA = args[i + 1];
+                        theDir = new File(PATH_TO_THE_FIRST_SRA);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_FIRST_SRA + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_FIRST_SRA = " + PATH_TO_THE_FIRST_SRA);
+                        break;
+                    case "--second_sra": case "-2":
+                        PATH_TO_THE_SECOND_SRA = args[i + 1];
+                        theDir = new File(PATH_TO_THE_SECOND_SRA);
+                        if (!theDir.exists()) {
+                                System.out.println(PATH_TO_THE_SECOND_SRA + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("PATH_TO_THE_SECOND_SRA = " + PATH_TO_THE_SECOND_SRA);
+                        break;
+                    case "--clip_strigency": case "-cs":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x == 0 || x == 1 || x == 2 || x == 3){
+                            CLIPPING_STRINGENCY = x;
+                            System.out.println("CLIPPING_STRINGENCY = " + CLIPPING_STRINGENCY);
+                        } else {
+                            System.out.println("Choose CLIPPING_STRINGENCY 0, 1, 2, or 3, or do not specify it to use the default value of 0.");
+                            System.exit(1);
+                        }
+                        break;
+                    case "--bam-format": case "-bf":
+                        BAMFORMAT = true;
+                        --i;
+                        System.out.println("BAMFORMAT = true");
+                        break;
+                    case "--competitive-mapping": case "-cm":
+                        COMPETITIVE_MODE = true;
+                        --i;
+                        System.out.println("COMPETITIVE_MODE = true");
+                        break;
+                    case "--min_mapping-score": case "-mms":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 0 && x < 100)
+                           MIN_MAPPING_SCORE = x;
+                        else {
+                            System.out.println("Choose MIN_MAPPING_SCORE in the range [0..100[ or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MIN_MAPPING_SCORE = " + MIN_MAPPING_SCORE);
+                        break;
+                    case "--num-kmer-samples": case "-nks":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 1)
+                           NUM_KMER_SAMPLES = x;
+                        else {
+                            System.out.println("Choose a non-zero NUM_KMER_SAMPLES or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("NUM_KMER_SAMPLES = " + NUM_KMER_SAMPLES);
+                        break;
+                    case "--max-alignment-length": case "-mal":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 50 && x<=5000)
+                           MAX_ALIGNMENT_LENGTH = x;
+                        else {
+                            System.out.println("Choose MAX_ALIGNMENT_LENGTH in the range [50..5000] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MAX_ALIGNMENT_LENGTH = " + MAX_ALIGNMENT_LENGTH);
+                        break;
+                    case "--min-hit_length": case "-mhl":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 10 && x <= 100)
+                           MIN_HIT_LENGTH = x;
+                        else {
+                            System.out.println("Choose MIN_HIT_LENGTH in the range [10..100] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MIN_HIT_LENGTH = " + MIN_HIT_LENGTH);
+                        break;
+                    case "--alignment_bound": case "-ab":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 1 && x <= 100)
+                           ALIGNMENT_BOUND = x;
+                        else {
+                            System.out.println("Choose ALIGNMENT_BOUND in the range [1..100] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("ALIGNMENT_BOUND = " + ALIGNMENT_BOUND);
+                        break;
+                    case "--max-num-locations": case "-mnl":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 1 && x <= 100)
+                           MAX_NUM_LOCATIONS = x;
+                        else {
+                            System.out.println("Choose MAX_NUM_LOCATIONS in the range [1..100] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MAX_NUM_LOCATIONS = " + MAX_NUM_LOCATIONS);
                         break;
                     case "--help": case "-h":
                         print_help_message();
@@ -450,12 +524,12 @@ public class Pantools {
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp\n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --genomes-file or -gf \n" +
-"      gives a text file containing paths to FASTA files of genomes;\n" +
+"      a text file containing paths to FASTA files of genomes;\n" +
 "      each in a seperated line.\n" +
-"   --kmer-size or ks\n" +
-"      gives the size of k-mers, if not given or is out of range \n" +
+"   --kmer-size or -ks\n" +
+"      the size of k-mers, if not given or is out of range \n" +
 "      (6 <= K_SIZE <= 255),an optimal value would be calculated automatically.    \n" +
 "\n" +
 "<build_panproteome or bp>\n" +
@@ -463,9 +537,9 @@ public class Pantools {
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp\n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --proteomes_file or -pf\n" +
-"      gives a text file containing paths to FASTA files of proteomes; \n" +
+"      a text file containing paths to FASTA files of proteomes; \n" +
 "      each in a seperated line.\n" +
 "             \n" +
 "<add_genomes or ag>\n" +
@@ -473,9 +547,9 @@ public class Pantools {
 "  \n" +
 "   <argument keys>\n" +
 "   --database_path or -dp\n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --genomes-file or -gf\n" +
-"      gives a text file containing paths to FASTA files of the new \n" +
+"      a text file containing paths to FASTA files of the new \n" +
 "      genomes to be added to the pangeome; \n" +
 "      each in a seperated line.\n" +
 "\n" +
@@ -484,9 +558,9 @@ public class Pantools {
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp \n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --annotations-file or -af\n" +
-"      gives a text file each line of which contains genome number and \n" +
+"      a text file each line of which contains genome number and \n" +
 "      path to the corresponding GFF file seperated by one space.\n" +
 "      Genomes are numbered in the same order they have been added\n" +
 "      to the pangenome. The protein sequence of the annotated genes \n" +
@@ -500,14 +574,14 @@ public class Pantools {
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp\n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --genome-numbers or -gn\n" +
-"      gives a text file containing genome_numbers for which the features will \n" +
+"      a text file containing genome_numbers for which the features will \n" +
 "      be retrieved. The resulting FASTA files have two parts separated by a dot. \n" +
 "      The first part determines the feature and the second determines the \n" +
 "      genome number; for example, genes.1.fasta.\n" +
 "   --feature-type or -ft (default = gene)\n" +
-"      gives the feature name; for example gene, mRNA, exon, tRNA, ... \n" +
+"      the feature name; for example gene, mRNA, exon, tRNA, ... \n" +
 "\n" +
 "<retrieve_regions or rr> \n" +
 "   To retrieve the sequence of some genomic regios from the pangenome. \n" +
@@ -515,9 +589,9 @@ public class Pantools {
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp \n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --regions-file or -rf\n" +
-"      gives a text file containing records with genome_number, \n" +
+"      a text file containing records with genome_number, \n" +
 "      sequence_number, begin and end positions seperated by one \n" +
 "      space for each region. The resulting FASTA file would have \n" +
 "      the same name with an additional .fasta extention.\n" +
@@ -528,9 +602,9 @@ public class Pantools {
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp\n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --genome-numbers or -gn\n" +
-"      gives a text file containing genome_numbers to be retrieved in each line. \n" +
+"      a text file containing genome_numbers to be retrieved in each line. \n" +
 "      The resulting FASTA files are named like Genome_x.fasta.\n" +
 "\n" +
 "<group or g>\n" +
@@ -538,42 +612,63 @@ public class Pantools {
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp\n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   --intersection-rate or -ir (default = 0.09)\n" +
-"      gives the fraction of kmers needs to be shared by two \n" +
+"      the fraction of kmers needs to be shared by two \n" +
 "      intersecting proteins. Should be in range [0.001, 0.1].\n" +
-"   --similarity-threshold or -st (default = 95) \n" +
-"      gives the minimum similarity score. Should be in range [1-99]. \n" +
+"   --min-protein-identity or -mpi (default = 95) \n" +
+"      the minimum similarity score. Should be in range [1-99]. \n" +
 "   --mcl-inflation or -mi (default = 9.6) \n" +
-"      gives the MCL inflation. Should be in range ]1-19[.\n" +
+"      the MCL inflation. Should be in range ]1-19[.\n" +
 "   --contrast or -ct (default = 8)\n" +
-"      gives the contrast factor. Should be in range ]0-10[.\n" +
+"      the contrast factor. Should be in range ]0-10[.\n" +
 "   --relaxation or rn (default 1)\n" +
-"      gives the relaxation in homology calls. Should be in range [1, 8], \n" +
+"      the relaxation in homology calls. Should be in range [1, 8], \n" +
 "      from strict to relaxed.\n" +
 "   --threads-number or -tn (default = 1) \n" +
-"      gives the number of parallel working threads\n" +
+"      the number of parallel working threads\n" +
 "\n" +
 "<map or m>\n" +
 "   To map single or paired-end reads to all or a sebset of constituent genomes.\n" +
 "\n" +
 "   <argument keys>\n" +
 "   --database_path or -dp\n" +
-"      gives path to the pangenome database. \n" +
+"      path to the pangenome database. \n" +
 "   -1 \n" +
-"      gives a text file containing path to the first short-read archive in FASTQ\n" +
+"      a text file containing path to the first short-read archive in FASTQ\n" +
 "      or FASTA format. \n" +
 "   -2 \n" +
-"      optionally, gives a text file containing path to the second short-read \n" +
+"      optionally, a text file containing path to the second short-read \n" +
 "      archive in FASTQ or FASTA format. \n" +
 "   --genome-numbers or -gn\n" +
-"      gives a text file containing genome_numbers to map reads against in \n" +
+"      a text file containing genome_numbers to map reads against in \n" +
 "      each line. \n" +
 "   --output-path or -op (default: database path determined by -dp)\n" +
-"      path to the output SAM files naked like pantools_x.sam.\n" +
+"      path to the output files.\n" +
 "   --threads-number or -tn (default = 1) \n" +
-"      gives the number of parallel working threads\n" +
-"\n" +
+"      the number of parallel working threads\n" +
+"   --min-mapping-score or -mms (default = 20)\n" +
+"      the minimum of read mapping score\n" +
+"   --num-kmer-samples or -nks (default = 20)\n" +
+"      the number of kmers sampled from read\n" +
+"   --min-hit-length or -mhl (default = 17)\n" +
+"      the minimum acceptable length of alignment after soft-clipping\n" +
+"   --max-alignment-length or -mal (default = 1000)\n" +
+"      the maximum acceptable length of alignment\n" +
+"   --max-num-locations or -mnl (default = 20)\n" +
+"      the maximum number of location of candidate hits to examine\n" +
+"   --alignment-bound or -ab (default = 7)\n" +
+"      the length of bound of banded alignment\n" +
+"   --clipping-stringency or -ci (default = 2)\n" +
+"      the stringency of soft-clipping  \n" +
+"      0 : no soft clipping\n" +
+"      1 : low\n" +
+"      2 : medium\n" +
+"      3 : high\n" +
+"   --bam-format or -bf (default = FALSE)\n" +
+"      the alignment format (.sam or .bam)\n" +
+"   --competitive-mode or -cm (default = FALSE)\n" +
+"      the alignment mode (competitive or normal)\n" +
 "<version or v>\n" +
 "   To show the versions of PanTools and Neo4j.\n" +
 "   \n" +

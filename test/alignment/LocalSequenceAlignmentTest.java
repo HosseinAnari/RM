@@ -42,7 +42,7 @@ public class LocalSequenceAlignmentTest {
     @Test
     public void test(){
         int i, j, m, n;
-        LocalSequenceAlignment instance = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, false, 'N');
+        LocalSequenceAlignment instance = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, 0, 'N');
         StringBuilder seq1, seq2;
         seq2 = new StringBuilder("AGTAGCAAATTAAGAGAACAAAA");
         seq1 = new StringBuilder(  "AGGCAAATTAAGAGAACAA");

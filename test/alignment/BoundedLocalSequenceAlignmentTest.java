@@ -44,8 +44,7 @@ public class BoundedLocalSequenceAlignmentTest {
     @Test
     public void test() {
         int i, j, m, n, bound = 2;
-        BoundedLocalSequenceAlignment instance = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, bound, false, 'N');
-        instance.initialize_bound(bound, 1000);
+        BoundedLocalSequenceAlignment instance = new BoundedLocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, bound, 0, 'N');
         StringBuilder seq1, seq2;
         seq2 = new StringBuilder("AGTAGCAAATTAAGAGAACAAAA");
         seq1 = new StringBuilder(  "AGGCAAATTAAGAGAACAA");

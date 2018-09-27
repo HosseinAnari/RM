@@ -20,7 +20,7 @@ public class LocalSequenceAlignment {
     private long left[][];
     private StringBuilder seq1;
     private StringBuilder seq2;
-    private StringBuilder cigar;
+    private Cigar cigar;
     private Stack<Character> operation_stack;
     private Stack<Integer> count_stack;
     private int MAX_LENGTH;
@@ -31,9 +31,10 @@ public class LocalSequenceAlignment {
     private long similarity_score;
     private char TYPE;
     private int offset;
+    private int range_len;
     private int[] score_array;
-    private int m_score = 5, s_score = -10;
-    private boolean CLIP;
+    private int mismatch_penalty, insertion_penalty;
+    private int CLIPPING_STRIGENCY;
     
     /**
      * The constructor of the class
@@ -41,12 +42,12 @@ public class LocalSequenceAlignment {
      * @param gap_ext
      * @param max_length
      */
-    public LocalSequenceAlignment(int gap_open, int gap_ext, int max_length, boolean c, char type) {
+    public LocalSequenceAlignment(int gap_open, int gap_ext, int max_length, int c, char type) {
         int i, j;
         MAX_LENGTH = max_length;
         GAP_OPEN = gap_open;
         GAP_EXT = gap_ext;
-        CLIP = c;
+        CLIPPING_STRIGENCY = c;
         TYPE = type;
     // initialize matrixes
         matrix = new long[MAX_LENGTH+1][MAX_LENGTH+1];
@@ -54,18 +55,18 @@ public class LocalSequenceAlignment {
         up = new long[MAX_LENGTH+1][MAX_LENGTH+1];
         left = new long[MAX_LENGTH+1][MAX_LENGTH+1];
         score_array = new int[MAX_LENGTH];
-        cigar = new StringBuilder();
         operation_stack = new Stack();
         count_stack = new Stack();
         direction[0][0] = 'M';
+        matrix[0][0] = 'M';
         for (i = 1; i <= MAX_LENGTH; i++) {
                 up[i][0] = 0;
-                left[i][0] = Integer.MIN_VALUE;
+                left[i][0] = 0;
                 matrix[i][0] = 0;
                 direction[i][0] = 'I';
             }
         for (j = 1; j <= MAX_LENGTH; j++) {
-                up[0][j] = Integer.MIN_VALUE;
+                up[0][j] = 0;
                 left[0][j] = 0;
                 matrix[0][j] = 0;
                 direction[0][j] = 'D';
@@ -76,6 +77,20 @@ public class LocalSequenceAlignment {
             initialize_BLOSUM_matrix();
         else
             System.out.println("Aligner tpre should be N or P");
+        switch (CLIPPING_STRIGENCY){
+            case 1:
+                mismatch_penalty = -1;
+                insertion_penalty = -1;
+                break;
+            case 2:
+                mismatch_penalty = -4;
+                insertion_penalty = -2;
+                break;
+            case 3:
+                mismatch_penalty = -9;
+                insertion_penalty = -3;
+                break;
+        }
     }
     
     public final void initialize_NUCC_matrix(){
@@ -958,7 +973,7 @@ public class LocalSequenceAlignment {
                     up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
                     left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
                     d = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i-1][j-1];
-                    if (d >= Math.max( up[i][j] , left[i][j])){
+                    if (d > Math.max( up[i][j] , left[i][j])){
                         matrix[i][j] = d;
                         direction[i][j] = 'M';
                     } else if (left[i][j] > up[i][j]){
@@ -968,7 +983,7 @@ public class LocalSequenceAlignment {
                         matrix[i][j] = up[i][j];
                         direction[i][j] = 'I';
                     }
-                    if (matrix[i][j] >= similarity_score){
+                    if (matrix[i][j] > similarity_score){
                         similarity_score = matrix[i][j];
                         max_i = i;
                         max_j = j;
@@ -997,15 +1012,19 @@ public class LocalSequenceAlignment {
     
     public String get_alignment() {
         int i, j, start;
+        int range[];
         StringBuilder subject = new StringBuilder();
         StringBuilder query = new StringBuilder();
         subject.setLength(0);
         query.setLength(0);
         i = max_i;
         j = max_j;
-        start = calculate_clip_start();
+        if (CLIPPING_STRIGENCY > 0)
+            range = calculate_clip_range();
+        else
+            range = new int[]{1, max_i, 1, max_j};
         while (i > 0 && j > 0) {
-            if (CLIP && i < start)
+            if (CLIPPING_STRIGENCY > 0 && i < range[0])
                 break;
             if (direction[i][j] == 'I') {
                 query.append( seq1.charAt(i-1) );
@@ -1022,7 +1041,7 @@ public class LocalSequenceAlignment {
                 j = j - 1;
             }
         } 
-        if (CLIP){
+        if (CLIPPING_STRIGENCY > 0){
             for (;i > 0 && j > 0; --i, --j){
                 query.append( seq1.charAt(i-1) );
                 subject.append( seq2.charAt(j-1) );
@@ -1074,80 +1093,94 @@ public class LocalSequenceAlignment {
         return similarity_score * 20 / seq1.length();
     }
     
-    public int calculate_clip_start() {
-        int i, j, k, d, x, y, max_ending_here, max_so_far, start;
-        if (!CLIP)
-            return 1;
-        else {
-            x = i = max_i;
-            j = max_j;
-            while (i > 0 && j > 0) {
-                if (direction[i][j] == 'I') {
-                    score_array[x--] = 0;
-                    i = i - 1;
-                } else if (direction[i][j] == 'D') {
-                    j = j - 1;
-                } else {
-                    score_array[x--] = seq1.charAt(i-1) == seq2.charAt(j-1) ? m_score : s_score;
-                    i = i - 1;
-                    j = j - 1;
-                }
-            } 
-            for (;i > 0; --i)
-                score_array[x--] = 0;
-            max_ending_here = max_so_far = score_array[1];
-            k = start = 1;
-                //System.out.print(score_array[0] + " ");
-            for (i = 2; i <= max_i; ++i){
-                //System.out.print(score_array[i] + " ");
-                if (score_array[i] > max_ending_here + score_array[i]){
-                    max_ending_here = score_array[i];
-                    k = i;
-                } else {
-                    max_ending_here = max_ending_here + score_array[i];
-                }
-                if (max_so_far < max_ending_here){
-                    start = k;
-                    max_so_far = max_ending_here;
-                }
+    public int[] calculate_clip_range() {
+        int i, j, x, max_ending_here, max_so_far, tmp_start, tmp_stop;
+        int[] range = new int[4];
+        x = i = max_i;
+        j = max_j;
+        while (i > 0 && j > 0) {
+            if (direction[i][j] == 'I') {
+                score_array[x--] = insertion_penalty;
+                i = i - 1;
+            } else if (direction[i][j] == 'D') {
+                j = j - 1;
+            } else {
+                score_array[x--] = seq1.charAt(i-1) == seq2.charAt(j-1) ? 1 : mismatch_penalty;
+                i = i - 1;
+                j = j - 1;
+            }
+        } 
+        for (;i > 0; --i)
+            score_array[x--] = 0;
+        max_ending_here = max_so_far = score_array[1];
+        tmp_start = tmp_stop = 1;
+        range[0] = range[1] = 1;
+            //System.out.print(score_array[0] + " ");
+        for (i = 2; i <= max_i; ++i){
+            //System.out.print(score_array[i] + " ");
+            if (score_array[i] > max_ending_here + score_array[i]){
+                max_ending_here = score_array[i];
+                tmp_start = tmp_stop = i;
+            } else {
+                max_ending_here = max_ending_here + score_array[i];
+                tmp_stop = i;
+            }
+            if (max_so_far < max_ending_here){
+                range[0] = tmp_start;
+                range[1] = tmp_stop;
+                max_so_far = max_ending_here;
             }
         }
-        return start;
+        i = max_i;
+        j = max_j;
+        while (i > 0 && j > 0) {
+            if (i == range[1]){
+                range[3] = j;
+            }
+            if (i == range[0]){
+                range[2] = j;
+            }
+            if (direction[i][j] == 'I') {
+                i = i - 1;
+            } else if (direction[i][j] == 'D') {
+                j = j - 1;
+            } else {
+                i = i - 1;
+                j = j - 1;
+            }
+        }  
+        return range;
     }
     
     public Cigar get_cigar() {
-        int i, j, move_counts, count, operations_sum = 0, start;
+        int i, j, move_counts, count;
+        int range[];
         char curr_move, prev_move, operation;
-        Cigar cigar = new Cigar();
         operation_stack.clear();
         count_stack.clear();
-        start = calculate_clip_start();
-        i = max_i;
-        j = max_j;
-        //System.out.println("start: "+ start + " max_i:"+max_i+" max_j:"+max_j);
-        if (max_i < seq1.length()){
-            operation_stack.push('S');
-            count_stack.push(seq1.length() - max_i);
-        } 
-        prev_move = direction[i][j];
-        move_counts = 1;
-        if (prev_move == 'I'){
-            i = i - 1;
-        }else if (prev_move == 'D'){
-            j = j - 1;
+        cigar = new Cigar();
+        if (CLIPPING_STRIGENCY > 0){
+            range = calculate_clip_range();
+            if (seq1.length() - range[1] > 0){
+                operation_stack.push('S');
+                count_stack.push(seq1.length() - range[1]);
+            }
+            prev_move = 'M';
+            move_counts = 1;
         } else {
-            i = i - 1;
-            j = j - 1;
-        } 
-        while (i > 0 && j > 0) {
-            //System.out.println(i+" "+j+ " " +direction[i][j+1-i]);
-            if (i < start)
-                curr_move = 'S';
-            else
-                curr_move = direction[i][j];
+            range = new int[]{1, max_i, 1, max_j};
+            prev_move = 'M';
+            move_counts = range[1] < seq1.length() ? seq1.length() - range[1] + 1 : 1;
+        }
+        range_len = range[1] - range[0] + 1;
+        i = range[1] - 1;
+        j = range[3] - 1;
+        offset = 0;
+        while (i >= range[0]){
+            curr_move = direction[i][j];
             if (curr_move == 'I'){
                 i = i - 1;
-            }else if (curr_move == 'D'){
+            } else if (curr_move == 'D'){
                 j = j - 1;
             } else {
                 i = i - 1;
@@ -1161,28 +1194,29 @@ public class LocalSequenceAlignment {
                 move_counts = 1;
             }
             prev_move = curr_move;
+            //System.out.println(i+" "+j+ " " +direction[i][j]);
         } 
-        if (prev_move != 'D'){
+        if (CLIPPING_STRIGENCY > 0){
             operation_stack.push(prev_move);
             count_stack.push(move_counts);
+            if (i > 0){
+                operation_stack.push('S');
+                count_stack.push(i);
+                offset += i;
+            }
+        } else {
+            if (prev_move == 'M')
+                move_counts += i;
+            operation_stack.push(prev_move);
+            count_stack.push(move_counts);
+            if (prev_move == 'I')
+                offset += move_counts;
         }
-        if (i > 0 && j == 0) {
-            operation_stack.push('I');
-            count_stack.push(i);
-        }
-        if (prev_move == 'S')
-            j += move_counts;
-        offset = j - i;
         while (!operation_stack.isEmpty()){
             operation = operation_stack.pop();
             count = count_stack.pop();
-            //System.out.println(count+" "+operation);
             cigar.add(new CigarElement(count, characterToEnum(operation)));
-            //if (operation != 'D')
-            //    operations_sum += count;
         }
-        //System.out.println(operations_sum + " " + seq1.length());
-        //System.out.println(cigar);
         return cigar;
     }
     
@@ -1190,5 +1224,8 @@ public class LocalSequenceAlignment {
         return offset;
     }
 
+    public int get_range_length(){
+        return range_len;
+    }
 
 }

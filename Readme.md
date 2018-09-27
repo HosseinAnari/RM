@@ -54,12 +54,12 @@ PanTools commands
 
    <argument keys>
    --database_path or -dp
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --genomes-file or -gf 
-      gives a text file containing paths to FASTA files of genomes;
+      a text file containing paths to FASTA files of genomes;
       each in a seperated line.
-   --kmer-size or ks
-      gives the size of k-mers, if not given or is out of range 
+   --kmer-size or -ks
+      the size of k-mers, if not given or is out of range 
       (6 <= K_SIZE <= 255),an optimal value would be calculated automatically.    
 
 <build_panproteome or bp>
@@ -67,9 +67,9 @@ PanTools commands
 
    <argument keys>
    --database_path or -dp
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --proteomes_file or -pf
-      gives a text file containing paths to FASTA files of proteomes; 
+      a text file containing paths to FASTA files of proteomes; 
       each in a seperated line.
              
 <add_genomes or ag>
@@ -77,9 +77,9 @@ PanTools commands
   
    <argument keys>
    --database_path or -dp
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --genomes-file or -gf
-      gives a text file containing paths to FASTA files of the new 
+      a text file containing paths to FASTA files of the new 
       genomes to be added to the pangeome; 
       each in a seperated line.
 
@@ -88,9 +88,9 @@ PanTools commands
 
    <argument keys>
    --database_path or -dp 
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --annotations-file or -af
-      gives a text file each line of which contains genome number and 
+      a text file each line of which contains genome number and 
       path to the corresponding GFF file seperated by one space.
       Genomes are numbered in the same order they have been added
       to the pangenome. The protein sequence of the annotated genes 
@@ -104,14 +104,14 @@ PanTools commands
 
    <argument keys>
    --database_path or -dp
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --genome-numbers or -gn
-      gives a text file containing genome_numbers for which the features will 
+      a text file containing genome_numbers for which the features will 
       be retrieved. The resulting FASTA files have two parts separated by a dot. 
       The first part determines the feature and the second determines the 
       genome number; for example, genes.1.fasta.
    --feature-type or -ft (default = gene)
-      gives the feature name; for example gene, mRNA, exon, tRNA, ... 
+      the feature name; for example gene, mRNA, exon, tRNA, ... 
 
 <retrieve_regions or rr> 
    To retrieve the sequence of some genomic regios from the pangenome. 
@@ -119,9 +119,9 @@ PanTools commands
 
    <argument keys>
    --database_path or -dp 
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --regions-file or -rf
-      gives a text file containing records with genome_number, 
+      a text file containing records with genome_number, 
       sequence_number, begin and end positions seperated by one 
       space for each region. The resulting FASTA file would have 
       the same name with an additional .fasta extention.
@@ -132,9 +132,9 @@ PanTools commands
 
    <argument keys>
    --database_path or -dp
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --genome-numbers or -gn
-      gives a text file containing genome_numbers to be retrieved in each line. 
+      a text file containing genome_numbers to be retrieved in each line. 
       The resulting FASTA files are named like Genome_x.fasta.
 
 <group or g>
@@ -142,42 +142,63 @@ PanTools commands
 
    <argument keys>
    --database_path or -dp
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    --intersection-rate or -ir (default = 0.09)
-      gives the fraction of kmers needs to be shared by two 
+      the fraction of kmers needs to be shared by two 
       intersecting proteins. Should be in range [0.001, 0.1].
-   --similarity-threshold or -st (default = 95) 
-      gives the minimum similarity score. Should be in range [1-99]. 
+   --min-protein-identity or -mpi (default = 95) 
+      the minimum similarity score. Should be in range [1-99]. 
    --mcl-inflation or -mi (default = 9.6) 
-      gives the MCL inflation. Should be in range ]1-19[.
+      the MCL inflation. Should be in range ]1-19[.
    --contrast or -ct (default = 8)
-      gives the contrast factor. Should be in range ]0-10[.
+      the contrast factor. Should be in range ]0-10[.
    --relaxation or rn (default 1)
-      gives the relaxation in homology calls. Should be in range [1, 8], 
+      the relaxation in homology calls. Should be in range [1, 8], 
       from strict to relaxed.
    --threads-number or -tn (default = 1) 
-      gives the number of parallel working threads
+      the number of parallel working threads
 
 <map or m>
    To map single or paired-end reads to all or a sebset of constituent genomes.
 
    <argument keys>
    --database_path or -dp
-      gives path to the pangenome database. 
+      path to the pangenome database. 
    -1 
-      gives a text file containing path to the first short-read archive in FASTQ
+      a text file containing path to the first short-read archive in FASTQ
       or FASTA format. 
    -2 
-      optionally, gives a text file containing path to the second short-read 
+      optionally, a text file containing path to the second short-read 
       archive in FASTQ or FASTA format. 
    --genome-numbers or -gn
-      gives a text file containing genome_numbers to map reads against in 
+      a text file containing genome_numbers to map reads against in 
       each line. 
    --output-path or -op (default: database path determined by -dp)
-      path to the output SAM files naked like pantools_x.sam.
+      path to the output files.
    --threads-number or -tn (default = 1) 
-      gives the number of parallel working threads
-
+      the number of parallel working threads
+   --min-mapping-score or -mms (default = 20)
+      the minimum of read mapping score
+   --num-kmer-samples or -nks (default = 20)
+      the number of kmers sampled from read
+   --min-hit-length or -mhl (default = 17)
+      the minimum acceptable length of alignment after soft-clipping
+   --max-alignment-length or -mal (default = 1000)
+      the maximum acceptable length of alignment
+   --max-num-locations or -mnl (default = 20)
+      the maximum number of location of candidate hits to examine
+   --alignment-bound or -ab (default = 7)
+      the length of bound of banded alignment
+   --clipping-stringency or -ci (default = 2)
+      the stringency of soft-clipping  
+      0 : no soft clipping
+      1 : low
+      2 : medium
+      3 : high
+   --bam-format or -bf (default = FALSE)
+      the alignment format (.sam or .bam)
+   --competitive-mode or -cm (default = FALSE)
+      the alignment mode (competitive or normal)
 <version or v>
    To show the versions of PanTools and Neo4j.
    

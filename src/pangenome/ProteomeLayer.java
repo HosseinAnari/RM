@@ -43,12 +43,12 @@ import static pantools.Pantools.RelTypes;
 import static pantools.Pantools.startTime;
 import static pantools.Pantools.MAX_TRANSACTION_SIZE;
 import static pantools.Pantools.PATH_TO_THE_PANGENOME_DATABASE;
-import static pantools.Pantools.THRESHOLD;
-import static pantools.Pantools.INTERSECTION;
+import static pantools.Pantools.MIN_PROTEIN_IDENTITY;
+import static pantools.Pantools.INTERSECTION_RATE;
 import static pantools.Pantools.CONTRAST;
 import static pantools.Pantools.GAP_EXT;
 import static pantools.Pantools.GAP_OPEN;
-import static pantools.Pantools.INFLATION;
+import static pantools.Pantools.MCL_INFLATION;
 import static pantools.Pantools.PATH_TO_THE_PROTEOMES_FILE;
 import static pantools.Pantools.THREADS;
 import static pantools.Pantools.executeCommand_for;
@@ -262,7 +262,7 @@ public class ProteomeLayer {
      */
     public class Find_intersections implements Runnable {
         int num_proteins;
-        double frac = INTERSECTION;
+        double frac = INTERSECTION_RATE;
         int max_intersection = MAX_INTERSECTIONS;
         public Find_intersections(int num) {
             num_proteins = num;
@@ -368,13 +368,13 @@ public class ProteomeLayer {
      */
     public class Find_similarities implements Runnable {
         int MAX_ALIGNMENT_LENGTH = 1000;
-        int m, n, threshold = THRESHOLD;
+        int m, n, threshold = MIN_PROTEIN_IDENTITY;
         int processed = 0;
         StringBuilder query;
         StringBuilder subject;
         LocalSequenceAlignment aligner;
         public Find_similarities() {
-            aligner = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT,MAX_ALIGNMENT_LENGTH, true, 'P');
+            aligner = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT,MAX_ALIGNMENT_LENGTH, 0, 'P');
             query = new StringBuilder();
             subject = new StringBuilder();
         }
@@ -628,7 +628,7 @@ public class ProteomeLayer {
             write_similaity_matrix(component, graph_path);
         //  Estimate the run-time of MCL
             time = wating_time = 1 + (int)Math.round(group_size / 100000000.0 * group_size);
-            for( infl = INFLATION; infl < 30; infl += 0.5){
+            for( infl = MCL_INFLATION; infl < 30; infl += 0.5){
                 command = "mcl " + graph_path + " --abc -I " + infl + " -o " + clusters_path;
                 if(executeCommand_for(command, wating_time))
                     break;
@@ -692,7 +692,7 @@ public class ProteomeLayer {
                         for (Relationship homology_edge: protein1_node.getRelationships(RelTypes.is_similar_to, Direction.OUTGOING)){
                             protein2_node = homology_edge.getEndNode();
                             similarity = (double)homology_edge.getProperty("similarity");
-                            similarity -= THRESHOLD;
+                            similarity -= MIN_PROTEIN_IDENTITY;
                             genome2 = (int)protein2_node.getProperty("genome");
                             similarity += phylogeny_distance[genome1][genome2];
                             graph.write(protein1_node.getId()+" "+protein2_node.getId()+" "+ Math.pow(similarity, CONTRAST) + "\n");
@@ -733,7 +733,7 @@ public class ProteomeLayer {
                     if (count[i][j] > 0)
                         phylogeny_distance[i][j] = phylogeny_distance[i][j]/count[i][j];
                     else
-                        phylogeny_distance[i][j] = THRESHOLD;
+                        phylogeny_distance[i][j] = MIN_PROTEIN_IDENTITY;
                 }
             for (i = 1; i < phylogeny_distance.length; ++i){
                 for (j = 1; j < phylogeny_distance.length; ++j){
