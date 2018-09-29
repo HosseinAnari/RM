@@ -65,10 +65,10 @@ public class Pantools {
     public static int THREADS = 1;
     
     public static double MIN_MAPPING_SCORE = 20.0;
-    public static int NUM_KMER_SAMPLES = 20;
+    public static int NUM_KMER_SAMPLES = 10;
     public static int MAX_NUM_LOCATIONS = 20;
     public static int MIN_HIT_LENGTH = 17;
-    public static int ALIGNMENT_BOUND = 7;    
+    public static int ALIGNMENT_BOUND = 3;    
     public static int CLIPPING_STRINGENCY = 2; // 0, 1, 2, 0r 3    
     public static boolean BAMFORMAT = false;
     public static boolean COMPETITIVE_MODE = false;
@@ -622,7 +622,7 @@ public class Pantools {
 "      the MCL inflation. Should be in range ]1-19[.\n" +
 "   --contrast or -ct (default = 8)\n" +
 "      the contrast factor. Should be in range ]0-10[.\n" +
-"   --relaxation or rn (default 1)\n" +
+"   --relaxation or -rn (default 1)\n" +
 "      the relaxation in homology calls. Should be in range [1, 8], \n" +
 "      from strict to relaxed.\n" +
 "   --threads-number or -tn (default = 1) \n" +

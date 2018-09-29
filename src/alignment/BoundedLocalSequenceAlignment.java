@@ -1,10 +1,5 @@
 package alignment;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import static htsjdk.samtools.CigarOperator.characterToEnum;
-import java.util.LinkedList;
 import java.util.Stack;
 
 /**
@@ -22,7 +17,7 @@ public class BoundedLocalSequenceAlignment {
     private long left[][];
     private StringBuilder seq1;
     private StringBuilder seq2;
-    private Cigar cigar;
+    private StringBuilder cigar;
     private Stack<Character> operation_stack;
     private Stack<Integer> count_stack;
     private long similarity_score;
@@ -32,6 +27,8 @@ public class BoundedLocalSequenceAlignment {
     private int[] score_array;
     private int max_i;
     private int max_j;
+    private int deletions;
+    private int insertions;
     private int BOUND;
     private char TYPE;
     private int offset;
@@ -53,6 +50,7 @@ public class BoundedLocalSequenceAlignment {
         BOUND = b;
         TYPE = type;
         CLIPPING_STRIGENCY = c;
+        cigar = new StringBuilder();
     // initialize matrixes
         matrix = new long[MAX_LENGTH + 1][2 * BOUND + 3];
         direction = new char[MAX_LENGTH + 1][2 * BOUND + 3];
@@ -62,7 +60,7 @@ public class BoundedLocalSequenceAlignment {
         operation_stack = new Stack();
         count_stack = new Stack();
         direction[0][0] = 'M';
-        matrix[0][0] = 'M';
+        matrix[0][0] = 0;
         for (i = 1; i <= MAX_LENGTH; i++) {
             direction[i][0] = 'M';
             direction[i][2 * BOUND + 2] = 'M';
@@ -1204,13 +1202,14 @@ public class BoundedLocalSequenceAlignment {
         return range;
     }
     
-    public Cigar get_cigar() {
+    public String get_cigar() {
         int i, j, move_counts, count;
         int range[];
         char curr_move, prev_move, operation;
+        insertions = deletions = 0;
         operation_stack.clear();
         count_stack.clear();
-        cigar = new Cigar();
+        cigar.setLength(0);
         if (CLIPPING_STRIGENCY > 0){
             range = calculate_clip_range();
             if (seq1.length() - range[1] > 0){
@@ -1227,13 +1226,14 @@ public class BoundedLocalSequenceAlignment {
         range_len = range[1] - range[0] + 1;
         i = range[1] - 1;
         j = range[3] - 1;
-        offset = BOUND;
         while (i >= range[0]){
             curr_move = direction[i][j - i + 1];
             if (curr_move == 'I'){
                 i = i - 1;
+                ++insertions;
             } else if (curr_move == 'D'){
                 j = j - 1;
+                ++deletions;
             } else {
                 i = i - 1;
                 j = j - 1;
@@ -1248,6 +1248,7 @@ public class BoundedLocalSequenceAlignment {
             prev_move = curr_move;
             //System.out.println(i+" "+j+ " " +direction[i][j]);
         } 
+        offset = j - i;
         if (CLIPPING_STRIGENCY > 0){
             operation_stack.push(prev_move);
             count_stack.push(move_counts);
@@ -1261,18 +1262,24 @@ public class BoundedLocalSequenceAlignment {
                 move_counts += i;
             operation_stack.push(prev_move);
             count_stack.push(move_counts);
-            if (prev_move == 'I')
-                offset += move_counts;
         }
         while (!operation_stack.isEmpty()){
             operation = operation_stack.pop();
             count = count_stack.pop();
-            cigar.add(new CigarElement(count, characterToEnum(operation)));
+            cigar.append(count).append(operation);
         }
-        return cigar;
+        return cigar.toString();
     }
         
     public int get_range_length(){
         return range_len;
+    }
+
+    public int get_insertions(){
+        return insertions;
+    }
+    
+    public int get_deletions(){
+        return deletions;
     }
 }
