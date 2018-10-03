@@ -197,8 +197,12 @@ PanTools commands
       3 : high
    --bam-format or -bf (default = FALSE)
       the alignment format (.sam or .bam)
-   --competitive-mode or -cm (default = FALSE)
-      the alignment mode (competitive or normal)
+   --alignment-mode or -am (default = 0)
+      the alignment mode
+      0 : Normal, only-best
+      1 : Normal, all-bests
+      2 : Competitive, only-best
+      3 : Competitive, all-bests
 <version or v>
    To show the versions of PanTools and Neo4j.
    

@@ -65,13 +65,16 @@ public class Pantools {
     public static int THREADS = 1;
     
     public static double MIN_MAPPING_SCORE = 20.0;
-    public static int NUM_KMER_SAMPLES = 10;
-    public static int MAX_NUM_LOCATIONS = 20;
+    public static int NUM_KMER_SAMPLES = 20;
+    public static int MAX_NUM_LOCATIONS = 10;
     public static int MIN_HIT_LENGTH = 17;
     public static int ALIGNMENT_BOUND = 3;    
-    public static int CLIPPING_STRINGENCY = 2; // 0, 1, 2, 0r 3    
+    public static int ALIGNMENT_MODE = 0; // 0: Normal only-best    
+                                          // 1: Normal all_bests
+                                          // 2: Competitive only_best
+                                          // 3: Competitive all_bests
+    public static int CLIPPING_STRINGENCY = 2; // 0:no-clipping, 1:low, 2:medium, 0r 3:high    
     public static boolean BAMFORMAT = false;
-    public static boolean COMPETITIVE_MODE = false;
     
     public static Label pangenome_label = Label.label("pangenome");
     public static Label genome_label = Label.label("genome");
@@ -325,24 +328,29 @@ public class Pantools {
                         System.out.println("PATH_TO_THE_SECOND_SRA = " + PATH_TO_THE_SECOND_SRA);
                         break;
                     case "--clip_strigency": case "-cs":
-                        x = Integer.parseInt(args[i + 1]);
-                        if (x == 0 || x == 1 || x == 2 || x == 3){
-                            CLIPPING_STRINGENCY = x;
-                            System.out.println("CLIPPING_STRINGENCY = " + CLIPPING_STRINGENCY);
-                        } else {
-                            System.out.println("Choose CLIPPING_STRINGENCY 0, 1, 2, or 3, or do not specify it to use the default value of 0.");
-                            System.exit(1);
+                        CLIPPING_STRINGENCY = Integer.parseInt(args[i + 1]);
+                        switch (CLIPPING_STRINGENCY){
+                            case 0:
+                            System.out.println("CLIPPING_STRINGENCY = " + CLIPPING_STRINGENCY + " : no-clipping");
+                                break;
+                            case 1:
+                            System.out.println("CLIPPING_STRINGENCY = " + CLIPPING_STRINGENCY + " : low");
+                                break;
+                            case 2:
+                            System.out.println("CLIPPING_STRINGENCY = " + CLIPPING_STRINGENCY + " : medium");
+                                break;
+                            case 3:
+                            System.out.println("CLIPPING_STRINGENCY = " + CLIPPING_STRINGENCY + " : high");
+                                break;
+                            default:
+                                System.out.println("Choose CLIPPING_STRINGENCY 0, 1, 2, or 3, or do not specify it to use the default value of 0.");
+                                System.exit(1);
                         }
                         break;
                     case "--bam-format": case "-bf":
                         BAMFORMAT = true;
                         --i;
                         System.out.println("BAMFORMAT = true");
-                        break;
-                    case "--competitive-mapping": case "-cm":
-                        COMPETITIVE_MODE = true;
-                        --i;
-                        System.out.println("COMPETITIVE_MODE = true");
                         break;
                     case "--min_mapping-score": case "-mms":
                         x = Integer.parseInt(args[i + 1]);
@@ -403,6 +411,26 @@ public class Pantools {
                             System.exit(1);
                         }
                         System.out.println("MAX_NUM_LOCATIONS = " + MAX_NUM_LOCATIONS);
+                        break;
+                    case "--alignment-mode": case "-am":
+                        ALIGNMENT_MODE = Integer.parseInt(args[i + 1]);
+                        switch (ALIGNMENT_MODE){
+                            case 0:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, only-best");
+                            break;
+                            case 1:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, all-bests");
+                            break;
+                            case 2:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Competitive, only-best");
+                            break;
+                            case 3:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Competitive, all-bests");
+                            break;
+                            default:    
+                                System.out.println("Choose ALIGNMENT_MODE 0 for best or 1 for all-bests mode, or do not specify it to use the default value.");
+                                System.exit(1);
+                        }
                         break;
                     case "--help": case "-h":
                         print_help_message();
@@ -622,7 +650,7 @@ public class Pantools {
 "      the MCL inflation. Should be in range ]1-19[.\n" +
 "   --contrast or -ct (default = 8)\n" +
 "      the contrast factor. Should be in range ]0-10[.\n" +
-"   --relaxation or -rn (default 1)\n" +
+"   --relaxation or rn (default 1)\n" +
 "      the relaxation in homology calls. Should be in range [1, 8], \n" +
 "      from strict to relaxed.\n" +
 "   --threads-number or -tn (default = 1) \n" +
@@ -667,8 +695,12 @@ public class Pantools {
 "      3 : high\n" +
 "   --bam-format or -bf (default = FALSE)\n" +
 "      the alignment format (.sam or .bam)\n" +
-"   --competitive-mode or -cm (default = FALSE)\n" +
-"      the alignment mode (competitive or normal)\n" +
+"   --alignment-mode or -am (default = 0)\n" +
+"      the alignment mode\n" +
+"      0 : Normal, only-best\n" +
+"      1 : Normal, all-bests\n" +
+"      2 : Competitive, only-best\n" +
+"      3 : Competitive, all-bests\n" +
 "<version or v>\n" +
 "   To show the versions of PanTools and Neo4j.\n" +
 "   \n" +

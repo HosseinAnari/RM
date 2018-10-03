@@ -76,7 +76,6 @@ import static pantools.Pantools.PATH_TO_THE_SECOND_SRA;
 import static pantools.Pantools.SHOW_KMERS;
 import static pantools.Pantools.CLIPPING_STRINGENCY;
 import static pantools.Pantools.BAMFORMAT;
-import static pantools.Pantools.COMPETITIVE_MODE;
 import static pantools.Pantools.OUTPUT_PATH;
 import static pantools.Pantools.THREADS;
 import static pantools.Pantools.degenerate_label;
@@ -90,6 +89,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static pantools.Pantools.ALIGNMENT_BOUND;
+import static pantools.Pantools.ALIGNMENT_MODE;
 import static pantools.Pantools.NUM_KMER_SAMPLES;
 import static pantools.Pantools.MAX_ALIGNMENT_LENGTH;
 import static pantools.Pantools.MIN_HIT_LENGTH;
@@ -594,113 +594,253 @@ public class GenomeLayer {
         }
                 
         public boolean find_single_hits(){
-            int genome;
+            int genome, secondary;
             hit h, best_hit = null;
-            double best_score;
+            double best_score, score;
             boolean found = false;
-            if (COMPETITIVE_MODE){
-                best_score = MIN_MAPPING_SCORE - 1;
-                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                    genome = genome_itr.next();
-                    if (!hits[0][genome].isEmpty()){
-                        h = hits[0][genome].remove();
-                        if (h.score > best_score){
-                            found = true;
-                            best_score = h.score;
-                            best_hit = h;
+            switch (ALIGNMENT_MODE){
+                case 0: // competitive only-best
+                    best_score = MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        if (!hits[0][genome].isEmpty()){
+                            h = hits[0][genome].remove();
+                            if (h.score > best_score){
+                                found = true;
+                                best_score = h.score;
+                                best_hit = h;
+                            }
+                            hits[0][genome].clear();
                         }
                     }
-                    hits[0][genome].clear();
-                }
-                if (!found)
-                    write_single_sam_record(new hit(0,0,0,-1,0,true,null,null));
-                else {
-                    write_single_sam_record(best_hit);
-                    mapped_to_genome[best_hit.genome]++;
-                }
-            } else {
-                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                    genome = genome_itr.next();
-                    if (!hits[0][genome].isEmpty()){
-                        write_single_sam_record(hits[0][genome].remove());
-                        mapped_to_genome[genome]++;
-                        found = true;
-                    } else
-                        write_single_sam_record(new hit(genome,0,0,-1,0,true,null,null));
-                    hits[0][genome].clear();
-                }
-            }
+                    if (!found)
+                        write_single_sam_record(new hit(0,0,0,-1,0,true,null,null), 0);
+                    else {
+                        write_single_sam_record(best_hit, 0);
+                        mapped_to_genome[best_hit.genome]++;
+                    }
+                break;
+                case 1: // competitive all_bests
+                    best_score = MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        if (!hits[0][genome].isEmpty()){
+                            h = hits[0][genome].peek();
+                            if (h.score > best_score){
+                                found = true;
+                                best_score = h.score;
+                                best_hit = h;
+                            }
+                        }
+                    }
+                    if (!found){
+                        write_single_sam_record(new hit(0,0,0,-1,0,true,null,null), 0);
+                    // clear hits    
+                        for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                            genome = genome_itr.next();
+                            hits[0][genome].clear();
+                        }
+                    } else {
+                        for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                            genome = genome_itr.next();
+                            secondary = 0;
+                            while (!hits[0][genome].isEmpty()){
+                                h = hits[0][genome].remove();
+                                if (h.score == best_score){
+                                    write_single_sam_record(h, secondary);
+                                    secondary = 256;
+                                } else
+                                    break;
+                            }
+                            hits[0][genome].clear(); // may break in the loop
+                        }
+                        mapped_to_genome[best_hit.genome]++;
+                    }
+                break;
+                case 2: // Normal only-best
+                    best_score = MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        if (!hits[0][genome].isEmpty()){
+                            h = hits[0][genome].remove();
+                            if (h.score > best_score) {
+                                write_single_sam_record(h, 0);
+                                mapped_to_genome[genome]++;
+                            }
+                            hits[0][genome].clear(); 
+                        } else
+                            write_single_sam_record(new hit(genome,0,0,-1,0,true,null,null), 0);
+                    }
+                break;
+                case 3: //Normal all_bests
+                    best_score = MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        h = hits[0][genome].peek();
+                        if (h != null && (score = h.score) > best_score){
+                            secondary = 0;
+                            while (!hits[0][genome].isEmpty()){
+                                h = hits[0][genome].remove();
+                                if (h.score == score) {
+                                    write_single_sam_record(h, secondary);
+                                    secondary = 256;
+                                    found = true;
+                                } else
+                                    break;
+                            }
+                            hits[0][genome].clear(); // may break
+                            if (found) 
+                                mapped_to_genome[genome]++;
+                        } else {
+                            write_single_sam_record(new hit(genome,0,0,-1,0,true,null,null), 0);
+                            hits[0][genome].clear(); 
+                        }
+                    }
+            } // switch
             return found;
         }
         
         public boolean find_paired_hits(){
             hit[] h = new hit[2];
             hit[] best_hit = new hit[2];
-            int i, genome, flag1, flag2;
+            int genome, flag1, flag2;
             double best_score;
-            boolean mapped = false;
-            if (COMPETITIVE_MODE){
-                best_score = -1;
-                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                    genome = genome_itr.next();
-                    find_best_pairs(genome, h);
-                    if (h[0].score + h[1].score > best_score){
-                        best_score = h[0].score + h[1].score;
-                        best_hit[0] = h[0];
-                        best_hit[1] = h[1];
+            boolean found = false;
+            switch (ALIGNMENT_MODE){
+                case 0: // competitive only-best
+                    best_score =  2 * MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        find_best_pairs(genome, h);
+                        if (h[0].score + h[1].score > best_score){
+                            best_score = h[0].score + h[1].score;
+                            best_hit[0] = h[0];
+                            best_hit[1] = h[1];
+                        }
+                    // clear hits    
+                        hits[0][genome].clear();
+                        hits[1][genome].clear();
                     }
-                    hits[0][genome].clear();
-                    hits[1][genome].clear();
-                }
-                mapped_to_genome[best_hit[0].genome]++;// assume
-                mapped_to_genome[best_hit[1].genome]++;// assume
-                if (best_hit[0].start != -1 && best_hit[1].start != -1){
-                    write_paired_sam_record(best_hit[0], best_hit[1], 1|2|0,1|2|0);// both mapped properly
-                    mapped = true;
-                } else {
-                    flag1 = flag2 = 1;
-                    if (best_hit[0].genome == 0){ // first unmapped
-                        flag1 |= 4;
-                        flag2 |= 8;
-                        mapped_to_genome[best_hit[0].genome]--;
-                    }
-                    if (best_hit[1].genome == 0){ // second unmapped
-                        flag1 |= 8;
-                        flag2 |= 4;
-                        mapped_to_genome[best_hit[1].genome]--;
-                    }
-                    write_paired_sam_record(best_hit[0], best_hit[1], flag1,flag2);// both unmapped
-                }
-            } else {
-                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                    genome = genome_itr.next();
-                    find_best_pairs(genome, best_hit);
                     mapped_to_genome[best_hit[0].genome]++;// assume
                     mapped_to_genome[best_hit[1].genome]++;// assume
-                    if (best_hit[0].start != -1 && best_hit[1].start != -1){
-                        write_paired_sam_record(best_hit[0], best_hit[1], 1|2|0,1|2|0);// both mapped properly
-                        mapped = true;
+                    if (best_hit[0].start != -1 && best_hit[1].start != -1){ // both mapped properly
+                        write_paired_sam_record(best_hit[0], best_hit[1], 1|2|0,1|2|0);
+                        found = true;
                     } else {
                         flag1 = flag2 = 1;
-                        if (best_hit[0].genome == 0){ // first unmapped
+                        if (best_hit[0].start == -1){ // first unmapped
                             flag1 |= 4;
                             flag2 |= 8;
                             mapped_to_genome[best_hit[0].genome]--;
-                            best_hit[0].genome = genome;// to be written in right file
                         }
-                        if (best_hit[1].genome == 0){ // //second unmapped
+                        if (best_hit[1].start == -1){ // second unmapped
                             flag1 |= 8;
                             flag2 |= 4;
                             mapped_to_genome[best_hit[1].genome]--;
-                            best_hit[1].genome = genome;// to be written in right file
                         }
-                        write_paired_sam_record(best_hit[0], best_hit[1], flag1,flag2);// both unmapped                    
+                        write_paired_sam_record(best_hit[0], best_hit[1], flag1,flag2);// both unmapped
                     }
-                    hits[0][genome].clear();
-                    hits[1][genome].clear();
-                }
-            }
-            return mapped;
+                break;    
+                case 1: // competetive all_bests
+                    best_score =  2 * MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        find_best_pairs(genome, h);
+                        if (h[0].score + h[1].score > best_score){
+                            best_score = h[0].score + h[1].score;
+                            best_hit[0] = h[0];
+                            best_hit[1] = h[1];
+                        }
+                    }
+                    mapped_to_genome[best_hit[0].genome]++;// assume
+                    mapped_to_genome[best_hit[1].genome]++;// assume
+                    if (best_hit[0].start != -1 && best_hit[1].start != -1){ // both mapped properly
+                        write_all_best_pairs(best_score);
+                        found = true;
+                    } else {
+                        flag1 = flag2 = 1;
+                        if (best_hit[0].start == -1){ // first unmapped
+                            flag1 |= 4;
+                            flag2 |= 8;
+                            mapped_to_genome[best_hit[0].genome]--;
+                        }
+                        if (best_hit[1].start == -1){ // second unmapped
+                            flag1 |= 8;
+                            flag2 |= 4;
+                            mapped_to_genome[best_hit[1].genome]--;
+                        }
+                        write_paired_sam_record(best_hit[0], best_hit[1], flag1,flag2);// both unmapped
+                    //clear hits    
+                        for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                            genome = genome_itr.next();
+                            hits[0][genome].clear();
+                            hits[1][genome].clear();
+                        }
+                    }
+                break;    
+                case 2: // Normal only-best
+                    best_score =  2 * MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        find_best_pairs(genome, best_hit);
+                        mapped_to_genome[best_hit[0].genome]++;// assume
+                        mapped_to_genome[best_hit[1].genome]++;// assume
+                        if (best_hit[0].start != -1 && best_hit[1].start != -1){
+                            write_paired_sam_record(best_hit[0], best_hit[1], 1|2|0,1|2|0);// both mapped properly
+                            found = true;
+                        } else {
+                            flag1 = flag2 = 1;
+                            if (best_hit[0].genome == 0){ // first unmapped
+                                flag1 |= 4;
+                                flag2 |= 8;
+                                mapped_to_genome[best_hit[0].genome]--;
+                                best_hit[0].genome = genome;// to be written in right file
+                            }
+                            if (best_hit[1].genome == 0){ // //second unmapped
+                                flag1 |= 8;
+                                flag2 |= 4;
+                                mapped_to_genome[best_hit[1].genome]--;
+                                best_hit[1].genome = genome;// to be written in right file
+                            }
+                            write_paired_sam_record(best_hit[0], best_hit[1], flag1,flag2);// both unmapped                    
+                        }
+                    // clear hits    
+                        hits[0][genome].clear();
+                        hits[1][genome].clear();
+                    }
+                break;    
+                case 3:// Normal all-bests
+                    best_score =  2 * MIN_MAPPING_SCORE - 1;
+                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                        genome = genome_itr.next();
+                        find_best_pairs(genome, best_hit);
+                        mapped_to_genome[best_hit[0].genome]++;// assume
+                        mapped_to_genome[best_hit[1].genome]++;// assume
+                        if (best_hit[0].start != -1 && best_hit[1].start != -1){// both mapped properly
+                            write_all_best_pairs(best_hit[0].score + best_hit[1].score); // clears hits
+                            found = true;
+                        } else {
+                            flag1 = flag2 = 1;
+                            if (best_hit[0].genome == 0){ // first unmapped
+                                flag1 |= 4;
+                                flag2 |= 8;
+                                mapped_to_genome[best_hit[0].genome]--;
+                                best_hit[0].genome = genome;// to be written in right file
+                            }
+                            if (best_hit[1].genome == 0){ // //second unmapped
+                                flag1 |= 8;
+                                flag2 |= 4;
+                                mapped_to_genome[best_hit[1].genome]--;
+                                best_hit[1].genome = genome;// to be written in right file
+                            }
+                            write_paired_sam_record(best_hit[0], best_hit[1], flag1,flag2);// both unmapped  
+                        //clear hits    
+                            hits[0][genome].clear();
+                            hits[1][genome].clear();
+                        }
+                    }
+            }//switch
+            return found;
         }
     
         public void find_best_pairs(int genome, hit[] best_hit){
@@ -735,8 +875,27 @@ public class GenomeLayer {
                     }
                 }
                 if (!found){
-                    best_hit[0] = hits[0][genome].remove();
-                    best_hit[1] = hits[1][genome].remove();
+                    best_hit[0] = hits[0][genome].peek();
+                    best_hit[1] = hits[1][genome].peek();
+                }
+            }
+        }
+
+        public void write_all_best_pairs(double best_score){ // leaves hits empty
+            hit h1, h2;
+            int genome;
+            int secondary = 0;
+            for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                genome = genome_itr.next();
+                while (!hits[0][genome].isEmpty()){
+                    h1 = hits[0][genome].remove();
+                    while (!hits[1][genome].isEmpty()){
+                        h2 = hits[1][genome].remove();
+                        if (h1.score + h2.score == best_score){
+                            write_paired_sam_record(h1, h2, 1|2|0|secondary,1|2|0|secondary);
+                            secondary = 256;
+                        }
+                    }
                 }
             }
         }
@@ -757,16 +916,15 @@ public class GenomeLayer {
                 return -1;
         }
 
-        public void write_single_sam_record(hit h){
-            int flag;
+        public void write_single_sam_record(hit h, int flag){
             SAMRecord sam_record = new SAMRecord(null);
             if (h.start == -1){
-                flag = 4; //unmapped
+                flag |= 4; //unmapped
                 sam_record.setReadName(reads[0].name.toString());
                 sam_record.setFlags(flag);
                 sam_record.setReadString(reads[0].forward_seq.toString());
             } else {
-                flag = h.forward?0:16; // direction
+                flag |= h.forward?0:16; // direction
                 sam_record.setReferenceName(genome_database.sequence_titles[h.genome][h.sequence].split("\\s")[0]);
                 sam_record.setFlags(flag);
                 sam_record.setReadName(reads[0].name.toString());
@@ -1178,12 +1336,12 @@ public class GenomeLayer {
             headers[genome].addProgramRecord(new SAMProgramRecord("PanTools"));
             if (BAMFORMAT)
                 sams[genome] = new SAMFileWriterFactory().makeBAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + (COMPETITIVE_MODE?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".bam"));
+                        new File(OUTPUT_PATH + (ALIGNMENT_MODE > 1?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".bam"));
             else
                 sams[genome] = new SAMFileWriterFactory().makeSAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + (COMPETITIVE_MODE?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".sam"));
+                        new File(OUTPUT_PATH + (ALIGNMENT_MODE > 1?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".sam"));
         }
-        if (COMPETITIVE_MODE){
+        if (ALIGNMENT_MODE > 1){
                 try {
                     unmapped = new BufferedWriter(new FileWriter(OUTPUT_PATH + "/unmapped.fasta"));
             } catch (IOException ex) {
@@ -1208,7 +1366,7 @@ public class GenomeLayer {
                 System.out.println(num_genomic_mapping[genome] + " mapped to genome " + genome);
                 sams[genome].close();
             }
-            if (COMPETITIVE_MODE){
+            if (ALIGNMENT_MODE > 1){
                     try {
                         unmapped.close();
                 } catch (IOException ex) {

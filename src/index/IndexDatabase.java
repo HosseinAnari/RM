@@ -244,7 +244,7 @@ public final class IndexDatabase {
             System.out.println("Indexing " + kmers_num + " kmers...                    ");
             // load the prefix file into the memory    
             pre_file.seek(4);
-            int q, len = 1 << (2 * pre_len);
+            int q, len = 1 << pre_len;
             prefix_ptr = new long[len];
             MappedByteBuffer pre_buff = pre_file.getChannel().map(FileChannel.MapMode.READ_ONLY, 4, 8 * len);
             for (i = 0; i < len; ++i) 

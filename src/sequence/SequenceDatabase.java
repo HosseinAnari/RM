@@ -16,8 +16,11 @@ import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.zip.GZIPInputStream;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -55,6 +58,7 @@ public class SequenceDatabase {
     public int[] binary;
     public int[] complement;
     private String db_path;
+    private boolean zipped;
 
     /**
      * Initialize sym, binary and complement arrays.
@@ -163,7 +167,7 @@ public class SequenceDatabase {
         try {
             in = new BufferedReader(new FileReader(genome_paths_file));
             while (in.ready()) {
-                line = in.readLine().trim();
+                line = in.readLine();
                 if (line.equals("")) {
                     continue;
                 }
@@ -189,20 +193,22 @@ public class SequenceDatabase {
             num_sequences[g] = 0;
             genome_names[g] = itr.next();
             try {
-                in = new BufferedReader(new FileReader(genome_names[g]));
                 fields = genome_names[g].split("\\.");
                 file_type = fields[fields.length - 1].toLowerCase();
+                if (file_type.equals("gz") || file_type.equals("gzip")){
+                    in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(genome_names[g])), "UTF-8"));                    
+                    file_type = fields[fields.length - 2].toLowerCase();
+                } else
+                    in = new BufferedReader(new FileReader(genome_names[g]));
                 if (file_type.equals("fasta") || file_type.equals("fa") || file_type.equals("fna") || file_type.equals("fn")){
-                    while (in.ready()) {
-                        line = in.readLine().trim();
+                    while ((line = in.readLine()) != null){
                         if (line.equals("")) 
                             continue;
                         if (line.charAt(0) == '>') // || line.charAt(0) == '+'
                             num_sequences[g]++;
                     }
                 }else if (file_type.equals("fastq") || file_type.equals("fq") || file_type.equals("fnq") || file_type.equals("q")){
-                    while (in.ready()) {
-                        line = in.readLine().trim();
+                    while ((line = in.readLine()) != null){
                         if (line.equals(""))
                             continue;
                         num_sequences[g]++;
@@ -312,15 +318,18 @@ public class SequenceDatabase {
         try {
             for (g = previous_num_genomes + 1; g <= num_genomes; ++g) {
                 System.out.println("Reading " + genome_names[g] + " ...");
-                in = new BufferedReader(new FileReader(genome_names[g]));
                 fields = genome_names[g].split("\\.");
                 file_type = fields[fields.length - 1].toLowerCase();
+                if (file_type.equals("gz") || file_type.equals("gzip")){
+                    in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(genome_names[g])), "UTF-8"));                    
+                    file_type = fields[fields.length - 2].toLowerCase();
+                } else
+                    in = new BufferedReader(new FileReader(genome_names[g]));
                 if (file_type.equals("fasta") || file_type.equals("fa") || file_type.equals("fna") || file_type.equals("fn")){
                     s = 0;
                     sequence_offset[g][0] = 0;
                     sequence_length[g][0] = 0;
-                    while (in.ready()) {
-                        line = in.readLine().trim();
+                    while ((line = in.readLine()) != null){
                         if (line.equals("")) 
                             continue;
                         if (line.charAt(0) == '>') {
@@ -342,13 +351,11 @@ public class SequenceDatabase {
                     if (size % 2 == 1) {
                         ++size;
                     }
-                }else if (file_type.equals("fastq") || file_type.equals("fq") || file_type.equals("fnq") || file_type.equals("q")){
-                    
+                } else if (file_type.equals("fastq") || file_type.equals("fq") || file_type.equals("fnq") || file_type.equals("q")){
                     sequence_offset[g][0] = 0;
                     sequence_length[g][0] = 0;
-                    for (s = 1; in.ready(); ++s) {
+                    for (s = 1;(line = in.readLine()) != null; ++s){
                     // read title    
-                        line = in.readLine().trim();
                         if (line.equals(""))
                             continue;
                         sequence_titles[g][s] = line.substring(1);
@@ -358,7 +365,7 @@ public class SequenceDatabase {
                         }
                         sequence_start[g][s] = num_bytes + size / 2;
                     // read sequence
-                        line = in.readLine().trim();
+                        line = in.readLine();
                         sequence_length[g][s] += line.length();
                         genome_length[g] += line.length();
                         size += line.length();
@@ -395,12 +402,17 @@ public class SequenceDatabase {
                 in = new BufferedReader(new FileReader(genome_names[g]));
                 fields = genome_names[g].split("\\.");
                 file_type = fields[fields.length - 1].toLowerCase();
+                if (file_type.equals("gz") || file_type.equals("gzip")){
+                    in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(genome_names[g])), "UTF-8"));                    
+                    file_type = fields[fields.length - 2].toLowerCase();
+                } else
+                    in = new BufferedReader(new FileReader(genome_names[g]));
                 if (file_type.equals("fasta") || file_type.equals("fa") || file_type.equals("fna") || file_type.equals("fn")){
                     carry = ' ';
                     havecarry = false;
                     s = 0;
-                    while (in.ready()) {
-                        line = in.readLine().trim().toUpperCase();
+                    while ((line = in.readLine()) != null){
+                        line = line.toUpperCase();
                         if (line.equals("")) {
                             continue;
                         }
@@ -435,16 +447,15 @@ public class SequenceDatabase {
                 }else if (file_type.equals("fastq") || file_type.equals("fq") || file_type.equals("fnq") || file_type.equals("q")){
                     carry = ' ';
                     havecarry = false;
-                    while (in.ready()) {
+                    while ((line = in.readLine()) != null){
                     // read title
-                        in.readLine();
                         if (havecarry) {
                             genomes_buff[(int) (byte_number / parts_size[0])].put((byte) (binary[carry] << 4));
                             ++byte_number;
                         }
                         havecarry = false;
                     //read sequence    
-                        line = in.readLine().trim().toUpperCase();
+                        line = in.readLine().toUpperCase();
                         len = line.length();
                         havecarry = (len % 2 == 1);
                         if (havecarry) {
@@ -519,7 +530,7 @@ public class SequenceDatabase {
             // count number of new genomes
             in = new BufferedReader(new FileReader(genome_paths_file));
             while (in.ready()) {
-                line = in.readLine().trim();
+                line = in.readLine();
                 if (line.equals("")) {
                     continue;
                 }
@@ -565,7 +576,7 @@ public class SequenceDatabase {
                 // count number of sequences
                 in = new BufferedReader(new FileReader(genome_names[g]));
                 while (in.ready()) {
-                    line = in.readLine().trim();
+                    line = in.readLine();
                     if (line.equals("")) {
                         continue;
                     }
