@@ -199,10 +199,10 @@ PanTools commands
       the alignment format (.sam or .bam)
    --alignment-mode or -am (default = 0)
       the alignment mode
-      0 : Normal, only-best
-      1 : Normal, all-bests
-      2 : Competitive, only-best
-      3 : Competitive, all-bests
+      0 : Competitive, only-best
+      1 : Competitive, all-bests
+      2 : Normal, only-best
+      3 : Normal, all-bests
 <version or v>
    To show the versions of PanTools and Neo4j.
    

@@ -69,10 +69,10 @@ public class Pantools {
     public static int MAX_NUM_LOCATIONS = 10;
     public static int MIN_HIT_LENGTH = 17;
     public static int ALIGNMENT_BOUND = 3;    
-    public static int ALIGNMENT_MODE = 0; // 0: Normal only-best    
-                                          // 1: Normal all_bests
-                                          // 2: Competitive only_best
-                                          // 3: Competitive all_bests
+    public static int ALIGNMENT_MODE = 0; // 0: Competitive only-best    
+                                          // 1: Competitive all_bests
+                                          // 2: Normal only_best
+                                          // 3: Normal all_bests
     public static int CLIPPING_STRINGENCY = 2; // 0:no-clipping, 1:low, 2:medium, 0r 3:high    
     public static boolean BAMFORMAT = false;
     
@@ -416,16 +416,16 @@ public class Pantools {
                         ALIGNMENT_MODE = Integer.parseInt(args[i + 1]);
                         switch (ALIGNMENT_MODE){
                             case 0:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, only-best");
-                            break;
-                            case 1:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, all-bests");
-                            break;
-                            case 2:
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Competitive, only-best");
                             break;
-                            case 3:
+                            case 1:
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Competitive, all-bests");
+                            break;
+                            case 2:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, only-best");
+                            break;
+                            case 3:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, all-bests");
                             break;
                             default:    
                                 System.out.println("Choose ALIGNMENT_MODE 0 for best or 1 for all-bests mode, or do not specify it to use the default value.");
@@ -697,10 +697,10 @@ public class Pantools {
 "      the alignment format (.sam or .bam)\n" +
 "   --alignment-mode or -am (default = 0)\n" +
 "      the alignment mode\n" +
-"      0 : Normal, only-best\n" +
-"      1 : Normal, all-bests\n" +
-"      2 : Competitive, only-best\n" +
-"      3 : Competitive, all-bests\n" +
+"      0 : Competitive, only-best\n" +
+"      1 : Competitive, all-bests\n" +
+"      2 : Normal, only-best\n" +
+"      3 : Normal, all-bests\n" +
 "<version or v>\n" +
 "   To show the versions of PanTools and Neo4j.\n" +
 "   \n" +
