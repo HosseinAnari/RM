@@ -69,7 +69,7 @@ public class Pantools {
     public static int MAX_NUM_LOCATIONS = 10;
     public static int MIN_HIT_LENGTH = 17;
     public static int ALIGNMENT_BOUND = 3;    
-    public static int ALIGNMENT_MODE = 0; // 0: Competitive only-best    
+    public static int ALIGNMENT_MODE = 2; // 0: Competitive only-best    
                                           // 1: Competitive all_bests
                                           // 2: Normal only_best
                                           // 3: Normal all_bests
@@ -159,6 +159,7 @@ public class Pantools {
                             System.out.println("Choose K in the range [6..255] or do not specify it to be calculated automatically.");
                             System.exit(1);
                         }
+                        System.out.println("K_SIZE = " + K_SIZE);
                         break;
                     case "--db-path": case "-dp":
                         PATH_TO_THE_PANGENOME_DATABASE = args[i + 1];

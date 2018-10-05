@@ -5,10 +5,8 @@
         <group>
             <file>file:/home/sheik005/pantools/src/index/IndexDatabase.java</file>
             <file>file:/home/sheik005/pantools/src/sequence/SequenceDatabase.java</file>
-            <file>file:/home/sheik005/pantools/src/alignment/BoundedLocalSequenceAlignment.java</file>
             <file>file:/home/sheik005/pantools/src/pangenome/GenomeLayer.java</file>
             <file>file:/home/sheik005/pantools/src/pantools/Pantools.java</file>
-            <file>file:/home/sheik005/pantools/src/alignment/LocalSequenceAlignment.java</file>
         </group>
     </open-files>
 </project-private>

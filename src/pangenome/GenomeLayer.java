@@ -593,6 +593,18 @@ public class GenomeLayer {
             return are_equal;
         }
                 
+        public boolean are_in_distance(String s1, StringBuilder s2, int d){
+            int i, count;
+            if (s1.length() == s2.length()){
+                for (i = count = 0; count <= d && i < s1.length(); ++i)
+                    if (s1.charAt(i) != s2.charAt(i))
+                        ++count;
+                return count <= d;
+            } else
+                return false;
+        }
+
+        
         public boolean find_single_hits(){
             int genome, secondary;
             hit h, best_hit = null;
@@ -933,7 +945,7 @@ public class GenomeLayer {
                 sam_record.setCigarString(h.cigar);
                 sam_record.setReadString((h.forward?reads[0].forward_seq:reads[0].reverse_seq).toString());
             }
-            if (h.genome == 0){
+            if (h.genome == 0 && ALIGNMENT_MODE < 2){
                 try {
                     unmapped.write(">" + sam_record.getReadName() + "\n" + sam_record.getReadString() + "\n");
                 } catch (IOException ex) {
@@ -992,7 +1004,7 @@ public class GenomeLayer {
                 sam_record.setReadString((h1.forward?reads[0].forward_seq:reads[0].reverse_seq).toString());
             //qual    
             }
-            if (h1.genome == 0){
+            if (h1.genome == 0 && ALIGNMENT_MODE < 2){
                 try {
                     unmapped.write(">" + sam_record.getReadName() + "\n" + sam_record.getReadString() + "\n");
                 } catch (IOException ex) {
@@ -1046,7 +1058,7 @@ public class GenomeLayer {
                 sam_record.setReadString((h2.forward?reads[1].forward_seq:reads[1].reverse_seq).toString());
             //qual    
             }
-            if (h2.genome == 0){
+            if (h2.genome == 0 && ALIGNMENT_MODE < 2){
                 try {
                     unmapped.write(">" + sam_record.getReadName() + "\n" + sam_record.getReadString() + "\n");
                 } catch (IOException ex) {
@@ -1336,19 +1348,19 @@ public class GenomeLayer {
             headers[genome].addProgramRecord(new SAMProgramRecord("PanTools"));
             if (BAMFORMAT)
                 sams[genome] = new SAMFileWriterFactory().makeBAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + (ALIGNMENT_MODE > 1?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".bam"));
+                        new File(OUTPUT_PATH + (ALIGNMENT_MODE < 2?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".bam"));
             else
                 sams[genome] = new SAMFileWriterFactory().makeSAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + (ALIGNMENT_MODE > 1?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".sam"));
+                        new File(OUTPUT_PATH + (ALIGNMENT_MODE < 2?"/best_":"/pantools_") + String.format("%0" + String.valueOf(genomeDb.num_genomes).length() + "d", genome) + ".sam"));
         }
-        if (ALIGNMENT_MODE > 1){
+        if (ALIGNMENT_MODE < 2){
                 try {
                     unmapped = new BufferedWriter(new FileWriter(OUTPUT_PATH + "/unmapped.fasta"));
             } catch (IOException ex) {
                 Logger.getLogger(GenomeLayer.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        System.out.println("Mapping " + sequencingDb[0].num_sequences[1] + " reads on " + n + " genome(s) :");
+        System.out.println("Mapping " + sequencingDb[0].num_sequences[1] + (paired?" paired-end": " ") + "reads on " + n + " genome(s) :");
         if (n > 0){
             System.out.print("0..................................................100\n ");
             try{
@@ -1366,7 +1378,7 @@ public class GenomeLayer {
                 System.out.println(num_genomic_mapping[genome] + " mapped to genome " + genome);
                 sams[genome].close();
             }
-            if (ALIGNMENT_MODE > 1){
+            if (ALIGNMENT_MODE < 2){
                     try {
                         unmapped.close();
                 } catch (IOException ex) {
