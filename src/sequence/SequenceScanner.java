@@ -68,7 +68,7 @@ public class SequenceScanner {
         if (position + offset < database.sequence_length[genome][sequence] && position + offset > -1) {
             byte b;
             long pos = database.sequence_start[genome][sequence] + (position + offset) / 2;
-            b = database.genomes_buff[(int) (pos / database.parts_size[0])].get((int) (pos % database.parts_size[0]));
+            b = database.genomes_buff[(int) (pos / database.MAX_BYTE_COUNT)].get((int) (pos % database.MAX_BYTE_COUNT));
             if ((position + offset) % 2 == 0) {
                 return (b >> 4) & 0x0f;
             } else {
@@ -200,7 +200,7 @@ public class SequenceScanner {
         if (p < database.sequence_length[g][s]) {
             byte b;
             long pos = database.sequence_start[g][s] + p / 2;
-            b = database.genomes_buff[(int) (pos / database.parts_size[0])].get((int) (pos % database.parts_size[0]));
+            b = database.genomes_buff[(int) (pos / database.MAX_BYTE_COUNT)].get((int) (pos % database.MAX_BYTE_COUNT));
             if (p % 2 == 0) {
                 return database.sym[(b >> 4) & 0x0f];
             } else {
@@ -222,7 +222,7 @@ public class SequenceScanner {
         if (p < database.sequence_length[g][s]) {
             byte b;
             long pos = database.sequence_start[g][s] + p / 2;
-            b = database.genomes_buff[(int) (pos / database.parts_size[0])].get((int) (pos % database.parts_size[0]));
+            b = database.genomes_buff[(int) (pos / database.MAX_BYTE_COUNT)].get((int) (pos % database.MAX_BYTE_COUNT));
             if (p % 2 == 0) {
                 return database.sym[database.complement[(b >> 4) & 0x0f]];
             } else {
@@ -244,7 +244,7 @@ public class SequenceScanner {
         if (p < database.sequence_length[g][s] && p > -1) {
             byte b;
             long pos = database.sequence_start[g][s] + p / 2;
-            b = database.genomes_buff[(int) (pos / database.parts_size[0])].get((int) (pos % database.parts_size[0]));
+            b = database.genomes_buff[(int) (pos / database.MAX_BYTE_COUNT)].get((int) (pos % database.MAX_BYTE_COUNT));
             if (p % 2 == 0) {
                 return (b >> 4) & 0x0f;
             } else {
@@ -267,7 +267,7 @@ public class SequenceScanner {
         if (p < database.sequence_length[g][s]) {
             byte b;
             long pos = database.sequence_start[g][s] + p / 2;
-            b = database.genomes_buff[(int) (pos / database.parts_size[0])].get((int) (pos % database.parts_size[0]));
+            b = database.genomes_buff[(int) (pos / database.MAX_BYTE_COUNT)].get((int) (pos % database.MAX_BYTE_COUNT));
             if (p % 2 == 0) {
                 return database.complement[(b >> 4) & 0x0f];
             } else {
@@ -282,7 +282,7 @@ public class SequenceScanner {
         if (position + offset < database.sequence_length[genome][sequence]) {
             byte b;
             long pos = database.sequence_start[genome][sequence] + (position + offset) / 2;
-            b = database.genomes_buff[(int) (pos / database.parts_size[0])].get((int) (pos % database.parts_size[0]));
+            b = database.genomes_buff[(int) (pos / database.MAX_BYTE_COUNT)].get((int) (pos % database.MAX_BYTE_COUNT));
             if ((position + offset) % 2 == 0) {
                 return database.complement[(b >> 4) & 0x0f];
             } else {
@@ -436,4 +436,5 @@ public class SequenceScanner {
         curr_index = inx.find(curr_kmer);
         return curr_index;
     }
+        
 }

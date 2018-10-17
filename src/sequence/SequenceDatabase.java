@@ -39,7 +39,7 @@ public class SequenceDatabase {
 
     private final String INFO_FILE = "/sequences.info";
     private final String DB_FILE = "/sequences.db";
-    public long num_bytes;
+    public long number_of_bytes;
     public int num_genomes;
     public int num_sequences[];        // Number of sequences in each genome    
     public String[][] sequence_titles; // Name of sequences for each genome
@@ -51,14 +51,11 @@ public class SequenceDatabase {
     public long sequence_start[][];    // Length of sequences for each genome    
     private RandomAccessFile genomes_file;
     public MappedByteBuffer[] genomes_buff;
-    private int parts_num;
-    public long[] parts_size;
-    public int max_byte = 100000000;
+    public int MAX_BYTE_COUNT = 1 << 24;// 16 MB 
     public char sym[];
     public int[] binary;
     public int[] complement;
     private String db_path;
-    private boolean zipped;
 
     /**
      * Initialize sym, binary and complement arrays.
@@ -92,14 +89,14 @@ public class SequenceDatabase {
      * @param path Path to the genome database
      */
     public SequenceDatabase(String path) {
-        int g, s, k;
+        int g, s, i, number_of_pages, page_size;
         String[] fields;
         BufferedReader in;
         db_path = path;
         initalize();
         try {
             in = new BufferedReader(new FileReader(path + INFO_FILE));
-            num_bytes = Long.valueOf(in.readLine().split(":")[1]);
+            number_of_bytes = Long.valueOf(in.readLine().split(":")[1]);
             num_genomes = Integer.parseInt(in.readLine().split(":")[1]);
             genome_names = new String[num_genomes + 1];
             genome_length = new long[num_genomes + 1];
@@ -131,12 +128,12 @@ public class SequenceDatabase {
             in.close();
             if (Files.exists(Paths.get(path + DB_FILE))) {
                 genomes_file = new RandomAccessFile(path + DB_FILE, "r");
-                parts_num = (int) (num_bytes % max_byte == 0 ? num_bytes / max_byte : num_bytes / max_byte + 1);
-                parts_size = new long[parts_num];
-                genomes_buff = new MappedByteBuffer[parts_num];
-                for (k = 0; k < parts_num; ++k) {
-                    parts_size[k] = (int) (k == parts_num - 1 ? num_bytes % max_byte : max_byte);
-                    genomes_buff[k] = genomes_file.getChannel().map(FileChannel.MapMode.READ_ONLY, k * parts_size[0], parts_size[k]);
+                number_of_pages = (int) (number_of_bytes % MAX_BYTE_COUNT == 0 ? number_of_bytes / MAX_BYTE_COUNT : number_of_bytes / MAX_BYTE_COUNT + 1);
+                genomes_buff = new MappedByteBuffer[number_of_pages];
+                for (i = 0; i < number_of_pages; ++i) {
+                    page_size = (int) (i == number_of_pages - 1 ? number_of_bytes % MAX_BYTE_COUNT : MAX_BYTE_COUNT);
+                    page_size = page_size == 0 ? MAX_BYTE_COUNT : page_size;
+                    genomes_buff[i] = genomes_file.getChannel().map(FileChannel.MapMode.READ_ONLY, ((long)i) * MAX_BYTE_COUNT, page_size);
                 }
             } else {
                 System.out.println("genome database not found!");
@@ -162,7 +159,7 @@ public class SequenceDatabase {
         initalize();
         num_genomes = 0;
         new File(path).mkdir();
-        num_bytes = 0;
+        number_of_bytes = 0;
         // count number of genomes    
         try {
             in = new BufferedReader(new FileReader(genome_paths_file));
@@ -242,9 +239,9 @@ public class SequenceDatabase {
     public SequenceDatabase(String path, GraphDatabaseService graphDb) {
         new File(path).mkdir();
         Node db_node, seq_node, gen_node;
-        int k, j, g, s;
+        int i, number_of_pages, g, s, page_size;
         db_path = path;
-        num_bytes = 0;
+        number_of_bytes = 0;
         initalize();
         try (Transaction tx = graphDb.beginTx()) {
             db_node = graphDb.findNodes(pangenome_label).next();
@@ -272,8 +269,8 @@ public class SequenceDatabase {
                     //sequence_qualities[g][s] = (String) seq_node.getProperty("quality","*");
                     sequence_length[g][s] = (long) seq_node.getProperty("length");
                     sequence_offset[g][s] = (long) seq_node.getProperty("offset");
-                    sequence_start[g][s] = num_bytes;
-                    num_bytes += sequence_length[g][s] % 2 == 0 ? sequence_length[g][s] / 2 : sequence_length[g][s] / 2 + 1;
+                    sequence_start[g][s] = number_of_bytes;
+                    number_of_bytes += sequence_length[g][s] % 2 == 0 ? sequence_length[g][s] / 2 : sequence_length[g][s] / 2 + 1;
                 }
             }
             try {
@@ -284,13 +281,13 @@ public class SequenceDatabase {
             }
             tx.success();
         }
-        parts_num = (int) (num_bytes % max_byte == 0 ? num_bytes / max_byte : num_bytes / max_byte + 1);
-        parts_size = new long[parts_num];
-        genomes_buff = new MappedByteBuffer[parts_num];
+        number_of_pages = (int) (number_of_bytes % MAX_BYTE_COUNT == 0 ? number_of_bytes / MAX_BYTE_COUNT : number_of_bytes / MAX_BYTE_COUNT + 1);
+        genomes_buff = new MappedByteBuffer[number_of_pages];
         try {
-            for (k = 0; k < parts_num; ++k) {
-                parts_size[k] = (int) (k == parts_num - 1 ? num_bytes % max_byte : max_byte);
-                genomes_buff[k] = genomes_file.getChannel().map(FileChannel.MapMode.READ_WRITE, k * parts_size[0], parts_size[k]);
+            for (i = 0; i < number_of_pages; ++i) {
+                page_size = (int) (i == number_of_pages - 1 ? number_of_bytes % MAX_BYTE_COUNT : MAX_BYTE_COUNT);
+                page_size = page_size == 0 ? MAX_BYTE_COUNT : page_size;
+                genomes_buff[i] = genomes_file.getChannel().map(FileChannel.MapMode.READ_WRITE, ((long)i) * MAX_BYTE_COUNT, page_size);
             }
         } catch (IOException e) {
             System.out.println(e.getMessage());
@@ -311,9 +308,9 @@ public class SequenceDatabase {
         char carry;
         boolean havecarry;
         long size = 0, byte_number;
-        int j, g, s, len, k;
+        int i, j, g, s, len, number_of_pages, page_size;
         BufferedReader in;
-        byte_number = previous_num_genomes == 0 ? 0 : num_bytes;
+        byte_number = previous_num_genomes == 0 ? 0 : number_of_bytes;
         initalize();
         try {
             for (g = previous_num_genomes + 1; g <= num_genomes; ++g) {
@@ -340,7 +337,7 @@ public class SequenceDatabase {
                             if (size % 2 == 1) {
                                 ++size;
                             }
-                            sequence_start[g][s] = num_bytes + size / 2;
+                            sequence_start[g][s] = number_of_bytes + size / 2;
                         } else {
                             len = line.length();
                             sequence_length[g][s] += len;
@@ -363,7 +360,7 @@ public class SequenceDatabase {
                         if (size % 2 == 1) {
                             ++size;
                         }
-                        sequence_start[g][s] = num_bytes + size / 2;
+                        sequence_start[g][s] = number_of_bytes + size / 2;
                     // read sequence
                         line = in.readLine();
                         sequence_length[g][s] += line.length();
@@ -383,21 +380,21 @@ public class SequenceDatabase {
                 }
                 in.close();
             }
-            num_bytes += size / 2;
+            number_of_bytes += size / 2;
             try {
                 genomes_file = new RandomAccessFile(path + DB_FILE, "rw");
             } catch (FileNotFoundException ioe) {
                 System.out.println(ioe.getMessage());
                 System.exit(1);
             }
-            parts_num = (int) (num_bytes % max_byte == 0 ? num_bytes / max_byte : num_bytes / max_byte + 1);
-            parts_size = new long[parts_num];
-            genomes_buff = new MappedByteBuffer[parts_num];
-            for (k = 0; k < parts_num; ++k) {
-                parts_size[k] = (int) (k == parts_num - 1 ? num_bytes % max_byte : max_byte);
-                genomes_buff[k] = genomes_file.getChannel().map(FileChannel.MapMode.READ_WRITE, k * parts_size[0], parts_size[k]);
+            number_of_pages = (int) (number_of_bytes / MAX_BYTE_COUNT + (number_of_bytes % MAX_BYTE_COUNT == 0 ? 0 : 1));
+            genomes_buff = new MappedByteBuffer[number_of_pages];
+            for (i = 0; i < number_of_pages; ++i) {
+                page_size = (int) (i == number_of_pages - 1 ? number_of_bytes % MAX_BYTE_COUNT : MAX_BYTE_COUNT);
+                page_size = page_size == 0 ? MAX_BYTE_COUNT : page_size;
+                genomes_buff[i] = genomes_file.getChannel().map(FileChannel.MapMode.READ_WRITE, ((long)i) * MAX_BYTE_COUNT, page_size);
             }
-            genomes_buff[(int) (byte_number / parts_size[0])].position((int) (byte_number % parts_size[0]));
+            genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].position((int) (byte_number % MAX_BYTE_COUNT));
             for (g = previous_num_genomes + 1; g <= num_genomes; ++g) {
                 in = new BufferedReader(new FileReader(genome_names[g]));
                 fields = genome_names[g].split("\\.");
@@ -421,7 +418,7 @@ public class SequenceDatabase {
                         }
                         if (line.charAt(0) == '>') {
                             if (havecarry) {
-                                genomes_buff[(int) (byte_number / parts_size[0])].put((byte) (binary[carry] << 4));
+                                genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte) (binary[carry] << 4));
                                 ++byte_number;
                             }
                             havecarry = false;
@@ -435,12 +432,12 @@ public class SequenceDatabase {
                                 --len;
                             }
                             for (j = 0; j < len; j += 2, ++byte_number) {
-                                genomes_buff[(int) (byte_number / parts_size[0])].put((byte)((binary[line.charAt(j)] << 4) | binary[line.charAt(j + 1)]));
+                                genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte)((binary[line.charAt(j)] << 4) | binary[line.charAt(j + 1)]));
                             }
                         }
                     }
                     if (havecarry) {
-                        genomes_buff[(int) (byte_number / parts_size[0])].put((byte) (binary[carry] << 4));
+                        genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte) (binary[carry] << 4));
                         ++byte_number;
                     }
                     havecarry = false;
@@ -450,7 +447,7 @@ public class SequenceDatabase {
                     while ((line = in.readLine()) != null){
                     // read title
                         if (havecarry) {
-                            genomes_buff[(int) (byte_number / parts_size[0])].put((byte) (binary[carry] << 4));
+                            genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte) (binary[carry] << 4));
                             ++byte_number;
                         }
                         havecarry = false;
@@ -463,7 +460,7 @@ public class SequenceDatabase {
                             --len;
                         }
                         for (j = 0; j < len; j += 2, ++byte_number) {
-                            genomes_buff[(int) (byte_number / parts_size[0])].put((byte)((binary[line.charAt(j)] << 4) | binary[line.charAt(j + 1)]));
+                            genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte)((binary[line.charAt(j)] << 4) | binary[line.charAt(j + 1)]));
                         }
                     // read +
                         in.readLine();
@@ -471,7 +468,7 @@ public class SequenceDatabase {
                         in.readLine();
                     }
                     if (havecarry) {
-                        genomes_buff[(int) (byte_number / parts_size[0])].put((byte) (binary[carry] << 4));
+                        genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte) (binary[carry] << 4));
                         ++byte_number;
                     }
                     havecarry = false;
@@ -487,31 +484,6 @@ public class SequenceDatabase {
             System.exit(1);
         }
     }
-
-    /**
-     * Make FASTA file of a genome from the genome database.
-     * 
-     * @param path Path of the genome database
-     * @param genome_number Number of the genome in the database
-     * @param genome_name Name of the resulting FASTA file
-     */
-    /*public void decode_genome(String path, int genome_number, String genome_name) {
-        int s;
-        BufferedWriter out;
-        initalize();
-        System.out.println("Decoding " + num_genomes + " genome(s) into FASTA files...");
-        try {
-            out = new BufferedWriter(new FileWriter(db_path + genome_name + ".fasta"));
-            for (s = 1; s <= num_sequences[genome_number]; ++s) {
-                out.write(">" + sequence_titles[genome_number][s] + "\n");
-                write_fasta(out, get_sequence(genome_number, s, 0, (int) sequence_length[genome_number][s], true), 80);
-            }
-            out.close();
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-            System.exit(1);
-        }
-    }*/
 
     /**
      * Adds new genomes to the genome database.
@@ -539,7 +511,7 @@ public class SequenceDatabase {
             }
             in.close();
             in = new BufferedReader(new FileReader(path + INFO_FILE));
-            num_bytes = Long.valueOf(in.readLine().split(":")[1]);
+            number_of_bytes = Long.valueOf(in.readLine().split(":")[1]);
             previous_num_genomes = Integer.parseInt(in.readLine().split(":")[1]);
             genome_names = new String[num_genomes + 1];
             genome_length = new long[num_genomes + 1];
@@ -609,7 +581,7 @@ public class SequenceDatabase {
             System.out.println(e.getMessage());
             System.exit(1);
         }
-        for (int k = 0; k < parts_num; ++k) {
+        for (int k = 0; k < genomes_buff.length; ++k) {
             genomes_buff[k] = null;
         }
     }
@@ -621,7 +593,7 @@ public class SequenceDatabase {
         int g, s;
         try {
             BufferedWriter out = new BufferedWriter(new FileWriter(db_path + INFO_FILE));
-            out.write("number_of_bytes:" + num_bytes + "\n");
+            out.write("number_of_bytes:" + number_of_bytes + "\n");
             out.write("number_of_genomes:" + num_genomes + "\n");
             for (g = 1; g <= num_genomes; ++g) {
                 out.write("genome name:" + genome_names[g] + "\n");

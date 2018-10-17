@@ -65,7 +65,7 @@ public class Pantools {
     public static int THREADS = 1;
     
     public static double MIN_MAPPING_SCORE = 20.0;
-    public static int NUM_KMER_SAMPLES = 20;
+    public static int NUM_KMER_SAMPLES = 10;
     public static int MAX_NUM_LOCATIONS = 10;
     public static int MIN_HIT_LENGTH = 17;
     public static int ALIGNMENT_BOUND = 3;    
@@ -838,7 +838,6 @@ public class Pantools {
             while ((line = reader.readLine()) != null) {
                 exe_output.append(line + "\n");
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }

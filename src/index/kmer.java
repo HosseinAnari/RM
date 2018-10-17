@@ -209,10 +209,10 @@ public class kmer {
      */
     public static int compare_suffix(byte[] suf1, byte[] suf2){
         int i;
-        for(i=0;i<suf1.length;++i)
-            if(suf1[i]!=suf2[i])
+        for(i = 0; i < suf1.length; ++i)
+            if(suf1[i] != suf2[i])
                 break;
-        if(i==suf1.length)
+        if(i == suf1.length)
             return 0;
         else if((suf1[i] & 0x0ff) < (suf2[i] & 0x0ff) )
             return -1;

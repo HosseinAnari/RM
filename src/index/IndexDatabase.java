@@ -11,6 +11,7 @@ import static index.kmer.compare_suffix;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -23,6 +24,8 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import static pantools.Pantools.MAX_TRANSACTION_SIZE;
 import static pantools.Pantools.cores;
 import static pantools.Pantools.degenerate_label;
@@ -66,6 +69,7 @@ public final class IndexDatabase {
     private int suffix_record_size;
     private int full_suffix_page_size;
     private int full_pointer_page_size;
+    private String KMC = "kmc2";
 
 
     /**
@@ -75,7 +79,7 @@ public final class IndexDatabase {
      */
     public IndexDatabase(String index_path) {
         int i, j, k, number_of_pages, record_size, page_size, full_page_size;
-        long number_of_prefixes, longest_scaffold = 0;
+        long number_of_prefixes;
         try {
             //System.out.println("Mounting index " + index_path);
             pre_file = new RandomAccessFile(index_path + "/sorted.kmc_pre", "r");
@@ -157,40 +161,13 @@ public final class IndexDatabase {
      */
     public IndexDatabase(String index_path, String genomes_path_file, SequenceDatabase genomeDb, int k) {
         long p;
-        IndexPointer null_pointer = new IndexPointer();
         int i, j, number_of_pages, record_size, page_size, full_page_size;
         long number_of_prefixes, longest_scaffold = 0;
-        String output;
         db_path = index_path;
-        System.out.println("Creating index " + index_path);
+        System.out.println("Creating index in " + index_path);
         try {
             Files.createDirectory(Paths.get(index_path));
-            if (k == -1) // K is not given by the user, then calculate the optimal K
-                K = Math.round((float)((Math.log(0.002001) - Math.log(genomeDb.num_bytes))/Math.log(0.25)));
-            else
-                K = k;
-            if (K % 2 == 0) // Even values are problamatic to localization process 
-                K += 1;
-            Runtime.getRuntime().exec("kmc"); // to check if kmc is reachable
-            System.out.println("Running KMC with K = " + K + " ...                      ");
-            executeCommand("kmc -cs127 -r -k" + K + " -t" + cores + " -m" + 
-                    (Runtime.getRuntime().maxMemory() / 1073741824L) + " -ci1 -fm " + 
-                    (genomeDb.num_genomes > 1 ? "@" + genomes_path_file.trim() : genomeDb.genome_names[1]) + " " + index_path + "/kmers " + index_path);            
-            if (new File(index_path + "/kmers.kmc_pre").exists() && new File(index_path + "/kmers.kmc_suf").exists()) {
-                System.out.println("Sorting Kmers...                      ");
-                output = executeCommand("kmc_tools sort " + index_path + "/kmers " + index_path + "/sorted");
-            // Small databases are usually sorted already    
-                if (output.startsWith("This database contains sorted k-mers already!")) {
-                    new File(index_path + "/kmers.kmc_pre").renameTo(new File(index_path + "/sorted.kmc_pre"));
-                    new File(index_path + "/kmers.kmc_suf").renameTo(new File(index_path + "/sorted.kmc_suf"));
-                } else {
-                    new File(index_path + "/kmers.kmc_pre").delete();
-                    new File(index_path + "/kmers.kmc_suf").delete();
-                }            
-            } else {
-                System.out.println("No kmc index found in " + index_path);
-                System.exit(1);
-            }
+            find_k(index_path, genomes_path_file, genomeDb, k);
         /*
         All integers in the KMC output files are stored in LSB (least significant byte first) format.
             
@@ -227,7 +204,6 @@ public final class IndexDatabase {
                 convention, floats are stored in the same way as they are stored in the memory.
         [marker] (another copy, to signal the file is not truncated).
         */
-        
             pre_file = new RandomAccessFile(index_path + "/sorted.kmc_pre", "r");
             pre_file.seek(pre_file.length() - 8);
             header_pos = read_int(pre_file);
@@ -258,7 +234,7 @@ public final class IndexDatabase {
             POINTER_LENGTH = 2 * id_len + offset_len + 1;
             key=new kmer(K, pre_len);
             write_info();
-            System.out.println("Indexing " + kmers_num + " kmers...                    ");
+            System.out.println("Indexing kmers...                    ");
         // load the prefix file into the memory    
             //System.out.println("Loading prefixes in memory...                    ");
             number_of_prefixes = 1 << (2 * pre_len);
@@ -306,13 +282,108 @@ public final class IndexDatabase {
                 page_size = page_size == 0 ? full_page_size : page_size; // in bytes
                 ptr_buff[i] = ptr_file.getChannel().map(FileChannel.MapMode.READ_WRITE, ((long)full_page_size) * i + 4, page_size);
             }
-            for (p = 0; p < kmers_num; ++p) {
-                put_pointer(null_pointer, p);
-            }
+            clear_pointer_database();
         } catch (IOException e) {
             System.out.println(e.getMessage());
             System.exit(1);
         }
+    }
+    
+    public void clear_pointer_database(){
+        long p;
+        IndexPointer null_pointer = new IndexPointer();
+        for (p = 0; p < kmers_num; ++p) {
+            put_pointer(null_pointer, p);
+        }
+    }
+    
+    public void find_k(String index_path, String genomes_path_file, SequenceDatabase genomeDb, int k) throws IOException{
+        double p = 0;
+        String output;
+        Runtime.getRuntime().exec(KMC); // to check if kmc is reachable
+        if (k > -1){ // K is not given by the user, then calculate the optimal K
+            K = k;
+            if (K % 2 == 0) // Even values are problamatic to localization process 
+                K += 1;
+            executeCommand(KMC + " -cs127 -k" + K + " -t" + cores + " -ci1 -fm " + 
+                    (genomeDb.num_genomes > 1 ? "@" + genomes_path_file.trim() : genomeDb.genome_names[1]) + " " + index_path + "/kmers " + index_path);            
+            if (new File(index_path + "/kmers.kmc_pre").exists() && new File(index_path + "/kmers.kmc_suf").exists()) {
+                output = executeCommand(KMC + "_tools sort " + index_path + "/kmers " + index_path + "/sorted");
+            // Small databases are usually sorted already    
+                if (output.startsWith("This database contains sorted k-mers already!")) {
+                    new File(index_path + "/kmers.kmc_pre").renameTo(new File(index_path + "/sorted.kmc_pre"));
+                    new File(index_path + "/kmers.kmc_suf").renameTo(new File(index_path + "/sorted.kmc_suf"));
+                } else {
+                    new File(index_path + "/kmers.kmc_pre").delete();
+                    new File(index_path + "/kmers.kmc_suf").delete();
+                }            
+            } else {
+                System.out.println("No kmc index found in " + index_path);
+                System.exit(1);
+            }
+        } else {
+            K = Math.round((float)(Math.log(genomeDb.number_of_bytes * 200)/Math.log(4)));
+            K += (K % 2 == 0 ? 1 : 0);
+            do{
+                K -= 2;
+        System.out.println("K = " +  K);
+                executeCommand(KMC + " -cs127 -k" + K + " -t" + cores + " -ci1 -fm " +            
+                        (genomeDb.num_genomes > 1 ? "@" + genomes_path_file.trim() : genomeDb.genome_names[1]) + " " + index_path + "/kmers " + index_path);
+                if (new File(index_path + "/kmers.kmc_pre").exists() && new File(index_path + "/kmers.kmc_suf").exists()) {
+                    output = executeCommand(KMC + "_tools sort " + index_path + "/kmers " + index_path + "/sorted");
+                // Small databases are usually sorted already    
+                    if (output.startsWith("This database contains sorted k-mers already!")) {
+                        new File(index_path + "/kmers.kmc_pre").renameTo(new File(index_path + "/sorted.kmc_pre"));
+                        new File(index_path + "/kmers.kmc_suf").renameTo(new File(index_path + "/sorted.kmc_suf"));
+                    } else {
+                        new File(index_path + "/kmers.kmc_pre").delete();
+                        new File(index_path + "/kmers.kmc_suf").delete();
+                    }            
+                    pre_file = new RandomAccessFile(index_path + "/sorted.kmc_pre", "r");
+                    pre_file.seek(pre_file.length() - 8);
+                    header_pos = read_int(pre_file);
+                    pre_file.seek(pre_file.length() - (8 + header_pos));
+                    // read the header of the index    
+                    K = read_int(pre_file);
+                    //  k-mer length
+                    mode = read_int(pre_file);
+                    // 0 (occurrence count) or 1 (counting according to Quake quality)
+                    ctr_size = read_int(pre_file);
+                    // counter field size: for mode 0 it is 1, 2, 3, or 4; for mode 1 it is always 4
+                    pre_len = read_int(pre_file);
+                    // prefix length such that suffix length is divisible by 4.
+                    // Max prefix length is limited up to 15 in KMC (exact value is calculated in such a way that summary size of kmc_pre and kmc_suf should be minimal)
+                    min_count = read_int(pre_file);
+                    // minimum number of k-mer occurrences to be written in the database    
+                    max_count = read_int(pre_file);
+                    // maximum number of k-mer occurrences to be written in the database
+                    kmers_num = read_long(pre_file);  
+                    p = (double)kmers_num / (1l  << (2 * K)) * 2;// 2n / 4 ^ K
+                    pre_file.close();
+                } else {
+                    System.out.println("No kmc index found in " + index_path);
+                    System.exit(1);
+                }
+            } while (p < 0.01);
+            K += 2;
+            executeCommand(KMC + " -cs127 -k" + K + " -t" + cores + " -ci1 -fm " +            
+                    (genomeDb.num_genomes > 1 ? "@" + genomes_path_file.trim() : genomeDb.genome_names[1]) + " " + index_path + "/kmers " + index_path);
+            if (new File(index_path + "/kmers.kmc_pre").exists() && new File(index_path + "/kmers.kmc_suf").exists()) {
+                output = executeCommand(KMC + "_tools sort " + index_path + "/kmers " + index_path + "/sorted");
+            // Small databases are usually sorted already    
+                if (output.startsWith("This database contains sorted k-mers already!")) {
+                    new File(index_path + "/kmers.kmc_pre").renameTo(new File(index_path + "/sorted.kmc_pre"));
+                    new File(index_path + "/kmers.kmc_suf").renameTo(new File(index_path + "/sorted.kmc_suf"));
+                } else {
+                    new File(index_path + "/kmers.kmc_pre").delete();
+                    new File(index_path + "/kmers.kmc_suf").delete();
+                } 
+            } else {
+                System.out.println("No kmc index found in " + index_path);
+                System.exit(1);
+            }
+        }
+        System.out.println("K = " +  K);
     }
 
     /**
@@ -345,12 +416,11 @@ public final class IndexDatabase {
             IndexDatabase old_index = new IndexDatabase(index_path + "old_index");
         // make new index for new genomes
             System.out.println("Running KMC with K = " + old_index.K + " ...                      ");
-            executeCommand("kmc -cs127 -r -k" + old_index.K + " -t" + cores + " -m" + (Runtime.getRuntime().maxMemory() / 1073741824L) + 
-                    " -ci1 -fm " + (genomeDb.num_genomes - previous_num_genomes > 1 ? "@" + 
+            executeCommand(KMC + " -cs127 -r -k" + old_index.K + " -t" + cores + " -ci1 -fm " + (genomeDb.num_genomes - previous_num_genomes > 1 ? "@" + 
                     genomes_path_file.trim() : genomeDb.genome_names[previous_num_genomes + 1]) + 
                     " " + index_path + "/new_kmers " + index_path);
         // merge two indeces    
-            executeCommand("kmc_tools union " + index_path + "/old_index/sorted " + index_path + "/new_kmers " + index_path + "/sorted");
+            executeCommand(KMC + "_tools union " + index_path + "/old_index/sorted " + index_path + "/new_kmers " + index_path + "/sorted");
             pre_file = new RandomAccessFile(index_path + "/sorted.kmc_pre", "r");
             pre_file.seek(pre_file.length() - 8);
             header_pos = read_int(pre_file);
@@ -677,13 +747,12 @@ public final class IndexDatabase {
         return suf_buff[(int) (number * suffix_record_size / full_suffix_page_size)].get() & 0x00FF;
     }
 
-
     /**
      * Reads a pointer from the kmer index.
      * @param poniter The pointer
      * @param number Number of the pointer.
      */
-    public void get_pointer(IndexPointer poniter, long number){
+    public void get_pointer(IndexPointer poniter, long number) throws IllegalArgumentException {
         MappedByteBuffer buff = ptr_buff[(int) (number * POINTER_LENGTH / full_pointer_page_size)];
         buff.position((int)(number * POINTER_LENGTH % full_pointer_page_size));
         poniter.node_id = read_long(buff,id_len);
@@ -802,11 +871,11 @@ public final class IndexDatabase {
         long low, mid, high;
         int j, comp, prefix = k_mer.get_canonical_prefix();;
         byte[] suffix = k_mer.get_canonical_suffix();
-        low = prefix_ptr[(int)prefix];
+        low = prefix_ptr[prefix];
         if (prefix == prefix_ptr.length - 1) {
             high = kmers_num - 1;
         } else {
-            high = prefix_ptr[(int)prefix + 1] - 1;
+            high = prefix_ptr[prefix + 1] - 1;
         }
         while (low <= high) {
             mid = (low + high) / 2;
