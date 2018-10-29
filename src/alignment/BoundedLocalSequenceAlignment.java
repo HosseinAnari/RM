@@ -61,22 +61,23 @@ public class BoundedLocalSequenceAlignment {
         count_stack = new Stack();
         direction[0][0] = 'M';
         matrix[0][0] = 0;
+        up[0][0] = left[0][0] = -1000;
         for (i = 1; i <= MAX_LENGTH; i++) {
             direction[i][0] = 'M';
             direction[i][2 * BOUND + 2] = 'M';
             // below the bound
-            up[i][0] = 0;
-            left[i][0] = 0;
+            up[i][0] = -1000;
+            left[i][0] = -1000;
             matrix[i][0] = 0;
             // above the bound
-            up[i][2 * BOUND + 2] = 0;
-            left[i][2 * BOUND + 2] = 0;
+            up[i][2 * BOUND + 2] = -1000;
+            left[i][2 * BOUND + 2] = -1000;
             matrix[i][2 * BOUND + 2] = 0;
         }
         for (j = 1; j <= 2 * BOUND + 2; j++) {
             direction[0][j] = 'D';
-            up[0][j] = 0;
-            left[0][j] = 0;//GAP_OPEN + j * GAP_EXT;
+            up[0][j] = -1000;
+            left[0][j] = -1000;//GAP_OPEN + j * GAP_EXT;
             matrix[0][j] = 0;
         }
         if (TYPE == 'N')
@@ -981,7 +982,7 @@ public class BoundedLocalSequenceAlignment {
                     up[i][j] = Math.max( up[i-1][j+1] + GAP_EXT , Math.max(matrix[i-1][j+1], left[i-1][j+1]) + GAP_OPEN + GAP_EXT);
                     left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
                     d = match[seq1.charAt(i-1)][seq2.charAt(j+i-2)] + matrix[i-1][j];
-                    if (d > Math.max( up[i][j] , left[i][j])){
+                    if (d >= Math.max( up[i][j] , left[i][j])){
                         matrix[i][j] = d;
                         direction[i][j] = 'M';
                     } else if (left[i][j] > up[i][j]){

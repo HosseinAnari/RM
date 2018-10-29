@@ -59,15 +59,16 @@ public class LocalSequenceAlignment {
         count_stack = new Stack();
         direction[0][0] = 'M';
         matrix[0][0] = 0;
+        up[0][0] = left[0][0] = -1000;
         for (i = 1; i <= MAX_LENGTH; i++) {
-                up[i][0] = 0;
-                left[i][0] = 0;
+                up[i][0] = -1000;
+                left[i][0] = -1000;
                 matrix[i][0] = 0;
                 direction[i][0] = 'I';
             }
         for (j = 1; j <= MAX_LENGTH; j++) {
-                up[0][j] = 0;
-                left[0][j] = 0;
+                up[0][j] = -1000;
+                left[0][j] = -1000;
                 matrix[0][j] = 0;
                 direction[0][j] = 'D';
             } 
@@ -973,7 +974,7 @@ public class LocalSequenceAlignment {
                     up[i][j] = Math.max( up[i-1][j] + GAP_EXT , Math.max(matrix[i-1][j], left[i-1][j]) + GAP_OPEN + GAP_EXT);
                     left[i][j] = Math.max( left[i][j-1] + GAP_EXT , Math.max(matrix[i][j-1], up[i][j-1]) + GAP_OPEN + GAP_EXT);
                     d = match[seq1.charAt(i-1)][seq2.charAt(j-1)] + matrix[i-1][j-1];
-                    if (d > Math.max( up[i][j] , left[i][j])){
+                    if (d >= Math.max( up[i][j] , left[i][j])){
                         matrix[i][j] = d;
                         direction[i][j] = 'M';
                     } else if (left[i][j] > up[i][j]){

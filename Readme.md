@@ -185,6 +185,8 @@ PanTools commands
       the minimum acceptable length of alignment after soft-clipping
    --max-alignment-length or -mal (default = 1000)
       the maximum acceptable length of alignment
+   --max-fragment-length or -mfl (default = 2000)
+      the maximum acceptable length of fragment
    --max-num-locations or -mnl (default = 20)
       the maximum number of location of candidate hits to examine
    --alignment-bound or -ab (default = 7)

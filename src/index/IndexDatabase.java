@@ -69,7 +69,7 @@ public final class IndexDatabase {
     private int suffix_record_size;
     private int full_suffix_page_size;
     private int full_pointer_page_size;
-    private String KMC = "kmc2";
+    private String KMC = "kmc";
 
 
     /**

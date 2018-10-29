@@ -54,8 +54,8 @@ public class Pantools {
 
     public static int K_SIZE = -1;
     public static int MAX_ALIGNMENT_LENGTH = 1000;
-    public static int GAP_OPEN = -15;
-    public static int GAP_EXT = -1;
+    public static int GAP_OPEN = -20;
+    public static int GAP_EXT = -2;
     public static int ANCHORS_DISTANCE = 10000; // The distance between two anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
     public static int cores = Runtime.getRuntime().availableProcessors();
@@ -64,16 +64,20 @@ public class Pantools {
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
     
-    public static double MIN_MAPPING_SCORE = 20.0;
+    public static double MIN_MAPPING_SCORE = 50.0;
     public static int NUM_KMER_SAMPLES = 10;
     public static int MAX_NUM_LOCATIONS = 10;
-    public static int MIN_HIT_LENGTH = 17;
+    public static int MIN_HIT_LENGTH = 50;
+    public static int MAX_FRAGMENT_LENGTH = 5000;
     public static int ALIGNMENT_BOUND = 3;    
     public static int ALIGNMENT_MODE = 2; // 0: Competitive only-best    
                                           // 1: Competitive all_bests
                                           // 2: Normal only_best
                                           // 3: Normal all_bests
-    public static int CLIPPING_STRINGENCY = 2; // 0:no-clipping, 1:low, 2:medium, 0r 3:high    
+    public static int CLIPPING_STRINGENCY = 0; // 0: no-clipping
+                                               // 1: low
+                                               // 2: medium
+                                               // 3: high    
     public static boolean BAMFORMAT = false;
     
     public static Label pangenome_label = Label.label("pangenome");
@@ -383,6 +387,16 @@ public class Pantools {
                         }
                         System.out.println("MAX_ALIGNMENT_LENGTH = " + MAX_ALIGNMENT_LENGTH);
                         break;
+                    case "--max-fragment-length": case "-mfl":
+                        x = Integer.parseInt(args[i + 1]);
+                        if (x >= 50 && x<=5000)
+                           MAX_FRAGMENT_LENGTH = x;
+                        else {
+                            System.out.println("Choose MAX_FRAGMENT_LENGTH in the range [50..5000] or do not specify it to use the default value.");
+                            System.exit(1);
+                        }
+                        System.out.println("MAX_FRAGMENT_LENGTH = " + MAX_FRAGMENT_LENGTH);
+                        break;
                     case "--min-hit_length": case "-mhl":
                         x = Integer.parseInt(args[i + 1]);
                         if (x >= 10 && x <= 100)
@@ -684,6 +698,8 @@ public class Pantools {
 "      the minimum acceptable length of alignment after soft-clipping\n" +
 "   --max-alignment-length or -mal (default = 1000)\n" +
 "      the maximum acceptable length of alignment\n" +
+"   --max-fragment-length or -mfl (default = 2000)\n" +
+"      the maximum acceptable length of fragment\n" +
 "   --max-num-locations or -mnl (default = 20)\n" +
 "      the maximum number of location of candidate hits to examine\n" +
 "   --alignment-bound or -ab (default = 7)\n" +
