@@ -96,6 +96,8 @@ PanTools commands
       to the pangenome. The protein sequence of the annotated genes 
       will be also stored in the folder "proteins" in the same path 
       as the pangenome. 
+   --connect_annotations or -ca
+      connect the annotated genomic features to the nodes of gDBG.
 
 <retrieve_features of rf>
    To retrieve the sequence of annotated features from the pangenome. 

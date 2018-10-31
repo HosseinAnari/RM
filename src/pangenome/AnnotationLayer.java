@@ -33,12 +33,14 @@ import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import static org.neo4j.graphdb.factory.GraphDatabaseSettings.keep_logical_logs;
+import static pangenome.GenomeLayer.locate;
 
 import static pantools.Pantools.GENOME_DATABASE_PATH;
 import static pantools.Pantools.FEATURE;
 import static pantools.Pantools.RelTypes;
 import static pantools.Pantools.labels;
 import static pantools.Pantools.CDS_label;
+import static pantools.Pantools.CONNECT_ANNOTATIONS;
 import static pantools.Pantools.GRAPH_DATABASE_PATH;
 import static pantools.Pantools.INDEX_DATABASE_PATH;
 import static pantools.Pantools.K_SIZE;
@@ -64,6 +66,10 @@ import static pantools.Pantools.startTime;
 import static pantools.Pantools.tRNA_label;
 import static pantools.Pantools.write_fasta;
 import sequence.SequenceScanner;
+import static pantools.Pantools.genomeDb;
+import static pantools.Pantools.genome_scanner;
+import static pantools.Pantools.graphDb;
+import static pantools.Pantools.indexDb;
 
 /**
  * Implements all the functionalities related to the annotation layer of the pangenome
@@ -73,14 +79,6 @@ import sequence.SequenceScanner;
  */
 public class AnnotationLayer {
     
-    private GraphDatabaseService graphDb;
-    private IndexDatabase indexDb;
-    private SequenceDatabase genomeDb;
-    private SequenceDatabase sequencingDb1;
-    private SequenceDatabase sequencingDb2;
-    private SequenceScanner genome_scanner;    
-    private SequenceScanner reads_scanner1;    
-    private SequenceScanner reads_scanner2;  
     private int num_proteins;
     private static char[] aminoacid_table;
     private static int[] binary;
@@ -177,7 +175,7 @@ public class AnnotationLayer {
         }
         startTime = System.currentTimeMillis();
         genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
-        indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
+        indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, "sorted");
         genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
         num_proteins = 0;
         try{
@@ -249,7 +247,7 @@ public class AnnotationLayer {
         int i, trsc, num_genes, num_mRNAs, num_tRNAs, num_rRNAs, feature_len, offset;
         long seq_len = -1;
         String sequence_id, current_sequence_id=null, attribute;
-        Node seq_node = null, gene_node, rna_node, feature_node, parent_node = null;
+        Node seq_node = null, gene_node, rna_node, feature_node, parent_node = null, node;
         Relationship rel;
         String[] fields,parent_ids;
         String strand, line, ID;
@@ -318,18 +316,20 @@ public class AnnotationLayer {
                         parent_node = get_node_by_id(gene_nodes,get_property(attribute,"Parent"));
                         if (parent_node != null)
                             parent_node.createRelationshipTo(feature_node, RelTypes.is_parent_of);
-                        /*start_ptr = locate(address);
-                        offset = start_ptr.offset;
-                        node = graphDb.getNodeById(start_ptr.node_id);
-                        rel = feature_node.createRelationshipTo(node, RelTypes.starts);
-                        rel.setProperty("offset", offset);
-                        rel.setProperty("genomic_position", address[2]);
-                        rel.setProperty("forward", start_ptr.canonical);
-                        stop_ptr = locate(new int[]{address[0], address[1], address[3]});
-                        rel = feature_node.createRelationshipTo(graphDb.getNodeById(stop_ptr.node_id), RelTypes.stops);
-                        rel.setProperty("offset", stop_ptr.offset);
-                        rel.setProperty("genomic_position", address[2] + feature_len - 1);
-                        rel.setProperty("forward", stop_ptr.canonical);*/
+                        if (CONNECT_ANNOTATIONS){
+                            start_ptr = locate(address);
+                            offset = start_ptr.offset;
+                            node = graphDb.getNodeById(start_ptr.node_id);
+                            rel = feature_node.createRelationshipTo(node, RelTypes.starts);
+                            rel.setProperty("offset", offset);
+                            rel.setProperty("genomic_position", address[2]);
+                            rel.setProperty("forward", start_ptr.canonical);
+                            stop_ptr = locate(new int[]{address[0], address[1], address[3]});
+                            rel = feature_node.createRelationshipTo(graphDb.getNodeById(stop_ptr.node_id), RelTypes.stops);
+                            rel.setProperty("offset", stop_ptr.offset);
+                            rel.setProperty("genomic_position", address[2] + feature_len - 1);
+                            rel.setProperty("forward", stop_ptr.canonical);
+                        }
                         if (fields[2].endsWith("gene")) {
                             // create new gene node
                             feature_node.addLabel(gene_label);
@@ -702,7 +702,7 @@ public class AnnotationLayer {
         registerShutdownHook(graphDb);
         startTime = System.currentTimeMillis();
         genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
-        indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
+        indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, "sorted");
         K_SIZE = indexDb.get_K();
         genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
         num_genomes = 0;

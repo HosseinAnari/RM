@@ -7,6 +7,7 @@
 
 package pantools;
 
+import index.IndexDatabase;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -18,12 +19,15 @@ import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.RelationshipType;
 import pangenome.AnnotationLayer;
 import pangenome.ProteomeLayer;
 import pangenome.GenomeLayer;
+import sequence.SequenceDatabase;
+import sequence.SequenceScanner;
 
 /**
  * Implements the main and shared functions. 
@@ -37,6 +41,11 @@ public class Pantools {
     public static String GENOME_DATABASE_PATH = "/databases/genome.db/";
     public static String OUTPUT_PATH = "";
 
+    public static GraphDatabaseService graphDb;
+    public static IndexDatabase indexDb;
+    public static SequenceDatabase genomeDb;
+    public static SequenceScanner genome_scanner;    
+
     public static String PATH_TO_THE_PANGENOME_DATABASE;
     public static String PATH_TO_THE_GENOMES_FILE;
     public static String PATH_TO_THE_PROTEOMES_FILE;
@@ -46,7 +55,9 @@ public class Pantools {
     public static String PATH_TO_THE_FIRST_SRA;
     public static String PATH_TO_THE_SECOND_SRA;
     public static String FEATURE = "gene";
-
+    
+    public static boolean CONNECT_ANNOTATIONS = false;
+    
     public static double INTERSECTION_RATE = 0.08;
     public static double CONTRAST = 8;
     public static double MCL_INFLATION = 10.8;
@@ -64,10 +75,10 @@ public class Pantools {
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
     
-    public static double MIN_MAPPING_SCORE = 50.0;
-    public static int NUM_KMER_SAMPLES = 10;
-    public static int MAX_NUM_LOCATIONS = 10;
-    public static int MIN_HIT_LENGTH = 50;
+    public static double MIN_MAPPING_SCORE = 20.0;
+    public static int NUM_KMER_SAMPLES = 20;
+    public static int MAX_NUM_LOCATIONS = 20;
+    public static int MIN_HIT_LENGTH = 20;
     public static int MAX_FRAGMENT_LENGTH = 5000;
     public static int ALIGNMENT_BOUND = 3;    
     public static int ALIGNMENT_MODE = 2; // 0: Competitive only-best    
@@ -199,6 +210,11 @@ public class Pantools {
                                 System.exit(1);
                         }
                         System.out.println("PATH_TO_THE_ANNOTATIONS_FILE = " + PATH_TO_THE_ANNOTATIONS_FILE);
+                        break;
+                    case "--connect-annotations": case "-ca":
+                        CONNECT_ANNOTATIONS = true;
+                        --i;
+                        System.out.println("CONNECT_ANNOTATIONS = true");
                         break;
                     case "--regions-file": case "-rf":
                         PATH_TO_THE_REGIONS_FILE = args[i + 1];
@@ -609,6 +625,8 @@ public class Pantools {
 "      to the pangenome. The protein sequence of the annotated genes \n" +
 "      will be also stored in the folder \"proteins\" in the same path \n" +
 "      as the pangenome. \n" +
+"   --connect_annotations or -ca\n" +
+"      connect the annotated genomic features to the nodes of gDBG.\n" +
 "\n" +
 "<retrieve_features of rf>\n" +
 "   To retrieve the sequence of annotated features from the pangenome. \n" +

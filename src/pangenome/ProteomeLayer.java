@@ -56,6 +56,10 @@ import static pantools.Pantools.heapSize;
 import static pantools.Pantools.homology_group_label;
 import static pantools.Pantools.mRNA_label;
 import static pantools.Pantools.pangenome_label;
+import static pantools.Pantools.genomeDb;
+import static pantools.Pantools.genome_scanner;
+import static pantools.Pantools.graphDb;
+import static pantools.Pantools.indexDb;
 
 /**
  * Implements all the functionalities related to the annotation layer of the pangenome
@@ -64,7 +68,6 @@ import static pantools.Pantools.pangenome_label;
  * University, Netherlands
  */
 public class ProteomeLayer {
-    private GraphDatabaseService graphDb;
     private int PEPTIDE_SIZE = 6;
     private int MAX_INTERSECTIONS;
     private int MAX_KMER_FREQ;
