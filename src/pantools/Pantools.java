@@ -75,16 +75,19 @@ public class Pantools {
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
     
-    public static double MIN_MAPPING_SCORE = 20.0;
-    public static int NUM_KMER_SAMPLES = 20;
-    public static int MAX_NUM_LOCATIONS = 20;
+    public static double MIN_MAPPING_SCORE = 10.0;
+    public static int NUM_KMER_SAMPLES = 10;
+    public static int MAX_NUM_LOCATIONS = 10;
     public static int MIN_HIT_LENGTH = 20;
     public static int MAX_FRAGMENT_LENGTH = 5000;
     public static int ALIGNMENT_BOUND = 3;    
-    public static int ALIGNMENT_MODE = 2; // 0: Competitive only-best    
-                                          // 1: Competitive all_bests
-                                          // 2: Normal only_best
-                                          // 3: Normal all_bests
+    public static int ALIGNMENT_MODE = 2; // 0: all-hits    
+                                          // -1: pan-genomic unique_best
+                                          // -2: pan-genomic one_best
+                                          // -3: pan-genomic all_bests
+                                          // 1: genomic unique_best
+                                          // 2: genomic one_best
+                                          // 3: genomic all_bests
     public static int CLIPPING_STRINGENCY = 0; // 0: no-clipping
                                                // 1: low
                                                // 2: medium
@@ -182,7 +185,12 @@ public class Pantools {
                         break;
                     case "--out-path": case "-op":
                         OUTPUT_PATH = args[i + 1];
-                        System.out.println("OUTPUT_PATH = " + OUTPUT_PATH);
+                        theDir = new File(OUTPUT_PATH);
+                        if (!theDir.exists()) {
+                                System.out.println(OUTPUT_PATH + " does not exist!");
+                                System.exit(1);
+                        } else
+                            System.out.println("OUTPUT_PATH = " + OUTPUT_PATH);
                         break;
                     case "--genomes-file": case "-gf":
                         PATH_TO_THE_GENOMES_FILE = args[i + 1];
@@ -447,16 +455,25 @@ public class Pantools {
                         ALIGNMENT_MODE = Integer.parseInt(args[i + 1]);
                         switch (ALIGNMENT_MODE){
                             case 0:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Competitive, only-best");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : all-hits");
+                            break;
+                            case -1:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : unique pangenomic-best");
+                            break;
+                            case -2:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : one pangenomic-best");
+                            break;
+                            case -3:
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : all pangenomic-bests");
                             break;
                             case 1:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Competitive, all-bests");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : unique genomic-best");
                             break;
                             case 2:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, only-best");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : one genomic-best");
                             break;
                             case 3:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : Normal, all-bests");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : all genomic-bests");
                             break;
                             default:    
                                 System.out.println("Choose ALIGNMENT_MODE 0 for best or 1 for all-bests mode, or do not specify it to use the default value.");

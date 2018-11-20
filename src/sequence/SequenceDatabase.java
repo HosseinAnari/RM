@@ -176,6 +176,10 @@ public class SequenceDatabase {
             System.out.println(e.getMessage());
             System.exit(1);
         }
+        if (num_genomes == 0){
+            System.err.println("No path found in " + genome_paths_file);
+            System.exit(1);
+        }
         genome_names = new String[num_genomes + 1];
         genome_length = new long[num_genomes + 1];
         sequence_titles = new String[num_genomes + 1][];
@@ -199,15 +203,19 @@ public class SequenceDatabase {
                     in = new BufferedReader(new FileReader(genome_names[g]));
                 if (file_type.equals("fasta") || file_type.equals("fa") || file_type.equals("fna") || file_type.equals("fn")){
                     while ((line = in.readLine()) != null){
-                        if (line.equals("")) 
-                            continue;
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                         if (line.charAt(0) == '>') // || line.charAt(0) == '+'
                             num_sequences[g]++;
                     }
                 }else if (file_type.equals("fastq") || file_type.equals("fq") || file_type.equals("fnq") || file_type.equals("q")){
                     while ((line = in.readLine()) != null){
-                        if (line.equals(""))
-                            continue;
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                         num_sequences[g]++;
                     }
                     num_sequences[g] /= 4;
@@ -327,8 +335,10 @@ public class SequenceDatabase {
                     sequence_offset[g][0] = 0;
                     sequence_length[g][0] = 0;
                     while ((line = in.readLine()) != null){
-                        if (line.equals("")) 
-                            continue;
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                         if (line.charAt(0) == '>') {
                             ++s;
                             sequence_titles[g][s] = line.substring(1);
@@ -353,8 +363,10 @@ public class SequenceDatabase {
                     sequence_length[g][0] = 0;
                     for (s = 1;(line = in.readLine()) != null; ++s){
                     // read title    
-                        if (line.equals(""))
-                            continue;
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                         sequence_titles[g][s] = line.substring(1);
                         sequence_offset[g][s] = sequence_offset[g][s - 1] + sequence_length[g][s - 1];
                         if (size % 2 == 1) {
@@ -367,9 +379,17 @@ public class SequenceDatabase {
                         genome_length[g] += line.length();
                         size += line.length();
                     // read +    
-                        in.readLine();
+                        line = in.readLine();
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                     // read quality    
-                        in.readLine();
+                        line = in.readLine();
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                         //sequence_qualities[g][s] = "*";
                     }
                     if (size % 2 == 1)
@@ -394,7 +414,7 @@ public class SequenceDatabase {
                 page_size = page_size == 0 ? MAX_BYTE_COUNT : page_size;
                 genomes_buff[i] = genomes_file.getChannel().map(FileChannel.MapMode.READ_WRITE, ((long)i) * MAX_BYTE_COUNT, page_size);
             }
-            genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].position((int) (byte_number % MAX_BYTE_COUNT));
+            //genomes_buff[(int) (number_of_bytes / MAX_BYTE_COUNT)].position((int) (number_of_bytes % MAX_BYTE_COUNT));
             for (g = previous_num_genomes + 1; g <= num_genomes; ++g) {
                 in = new BufferedReader(new FileReader(genome_names[g]));
                 fields = genome_names[g].split("\\.");
@@ -409,10 +429,11 @@ public class SequenceDatabase {
                     havecarry = false;
                     s = 0;
                     while ((line = in.readLine()) != null){
-                        line = line.toUpperCase();
-                        if (line.equals("")) {
-                            continue;
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
                         }
+                        line = line.toUpperCase();
                         if (line.charAt(0) != '>' && havecarry) {
                             line = carry + line;
                         }
@@ -446,13 +467,22 @@ public class SequenceDatabase {
                     havecarry = false;
                     while ((line = in.readLine()) != null){
                     // read title
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                         if (havecarry) {
                             genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte) (binary[carry] << 4));
                             ++byte_number;
                         }
                         havecarry = false;
                     //read sequence    
-                        line = in.readLine().toUpperCase();
+                        line = in.readLine();
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
+                        line = line.toUpperCase();
                         len = line.length();
                         havecarry = (len % 2 == 1);
                         if (havecarry) {
@@ -463,9 +493,17 @@ public class SequenceDatabase {
                             genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte)((binary[line.charAt(j)] << 4) | binary[line.charAt(j + 1)]));
                         }
                     // read +
-                        in.readLine();
+                        line = in.readLine();
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                     // read quality
-                        in.readLine();
+                        line = in.readLine();
+                        if (line.equals("")){
+                            System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                            System.exit(1);
+                        }
                     }
                     if (havecarry) {
                         genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].put((byte) (binary[carry] << 4));
@@ -547,10 +585,10 @@ public class SequenceDatabase {
                 genome_names[g] = itr.next();
                 // count number of sequences
                 in = new BufferedReader(new FileReader(genome_names[g]));
-                while (in.ready()) {
-                    line = in.readLine();
-                    if (line.equals("")) {
-                        continue;
+                while ((line = in.readLine()) != null){
+                    if (line.equals("")){
+                        System.err.println("There are some empty lines in " + genome_names[g] + "!");
+                        System.exit(1);
                     }
                     if (line.charAt(0) == '>') {
                         num_sequences[g]++;

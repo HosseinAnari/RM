@@ -144,7 +144,7 @@ public class GenomeLayer {
         }
     }
     
-    public class hit{
+    public class single_hit{
         public int genome;
         public int sequence;
         public double score;
@@ -155,7 +155,7 @@ public class GenomeLayer {
         public boolean forward;
         public String cigar;
         public String reference;
-        public hit(int gn, int sq, double sc, int st, int off, int len, int del, boolean fw, String cg, String r){
+        public single_hit(int gn, int sq, double sc, int st, int off, int len, int del, boolean fw, String cg, String r){
             genome = gn;
             sequence = sq;
             score = sc;
@@ -168,8 +168,19 @@ public class GenomeLayer {
             reference = r;
         }
         
-        public hit(){
+        public single_hit(single_hit h){
+            genome = h.genome;
+            sequence = h.sequence;
+            score = h.score;
+            start = h.start;
+            offset = h.offset;
+            length = h.length;
+            deletions = h.deletions;
+            forward = h.forward;
+            cigar = h.cigar;
+            reference = h.reference;
         }
+        
 
         @Override
         public String toString(){
@@ -186,34 +197,182 @@ public class GenomeLayer {
         }
     }
 
+    public class paired_hit{
+        public int genome1;
+        public int sequence1;
+        public double score1;
+        public int start1;
+        public int offset1;
+        public int length1;
+        public int deletions1;
+        public boolean forward1;
+        public String cigar1;
+        public String reference1;
+
+        public int genome2;
+        public int sequence2;
+        public double score2;
+        public int start2;
+        public int offset2;
+        public int length2;
+        public int deletions2;
+        public boolean forward2;
+        public String cigar2;
+        public String reference2;
+        
+        public paired_hit(int gn1, int sq1, double sc1, int st1, int off1, int len1, int del1, boolean fw1, String cg1, String r1,
+                          int gn2, int sq2, double sc2, int st2, int off2, int len2, int del2, boolean fw2, String cg2, String r2){
+            genome1 = gn1;
+            sequence1 = sq1;
+            score1 = sc1;
+            start1 = st1;
+            offset1 = off1;
+            length1 = len1;
+            deletions1 = del1;
+            forward1 = fw1;
+            cigar1 = cg1;
+            reference1 = r1;
+
+            genome2 = gn2;
+            sequence2 = sq2;
+            score2 = sc2;
+            start2 = st2;
+            offset2 = off2;
+            length2 = len2;
+            deletions2 = del2;
+            forward2 = fw2;
+            cigar2 = cg2;
+            reference2 = r2;
+        }
+
+        public paired_hit(paired_hit h){
+            genome1 = h.genome1;
+            sequence1 = h.sequence1;
+            score1 = h.score1;
+            start1 = h.start1;
+            offset1 = h.offset1;
+            length1 = h.length1;
+            deletions1 = h.deletions1;
+            forward1 = h.forward1;
+            cigar1 = h.cigar1;
+            reference1 = h.reference1;
+
+            genome2 = h.genome2;
+            sequence2 = h.sequence2;
+            score2 = h.score2;
+            start2 = h.start2;
+            offset2 = h.offset2;
+            length2 = h.length2;
+            deletions2 = h.deletions2;
+            forward2 = h.forward2;
+            cigar2 = h.cigar2;
+            reference2 = h.reference2;
+        }
+        
+
+        public double get_score(){
+            return score1 + score2;
+        }
+
+        public int get_min_start(){
+            return Math.min(start1, start2);
+        }
+
+        public int get_max_start(){
+            return Math.max(start1, start2);
+        }
+
+        @Override
+        public String toString(){
+            return "(genome1:" + genome1 + 
+                    ",sequence1:" + sequence1 + 
+                    ",score1:" + score1 + 
+                    ",start1:" + start1 + 
+                    ",offset1:" + offset1 + 
+                    ",length1:" + length1 + 
+                    ",deletions1:" + deletions1 + 
+                    ",forward1:" + forward1 + 
+                    ",reference1:" + reference1 + 
+                    ",cigar1:" + cigar1 +")" +
+                    "/n" +
+                    "(genome2:" + genome2 + 
+                    ",sequence2:" + sequence2 + 
+                    ",score2:" + score2 + 
+                    ",start2:" + start2 + 
+                    ",offset2:" + offset2 + 
+                    ",length2:" + length2 + 
+                    ",deletions2:" + deletions2 + 
+                    ",forward2:" + forward2 + 
+                    ",reference2:" + reference2 + 
+                    ",cigar2:" + cigar2 +")";
+        }
+    }
+
     /**
      * Implements a comparator for integer arrays of size two
      */
-    public class hitComparator implements Comparator<hit> {
+    public static class single_hitComparator implements Comparator<single_hit> {
         @Override
-        public int compare(hit x, hit y) {
+        public int compare(single_hit x, single_hit y) {
             if (y.score < x.score) 
                 return -1;
             else if (y.score > x.score) 
                 return 1;
-            else if (y.cigar.length() > x.cigar.length()) 
+            /*else if (y.genome > x.genome) 
                 return -1;
-            else if (y.cigar.length() < x.cigar.length()) 
-                return 1;
-            else if (y.sequence > x.sequence) 
+            else if (y.genome < x.genome) 
+                return 1;*/
+            else if (y.cigar != null && x.cigar != null){
+                 if (y.cigar.length() > x.cigar.length()) 
+                    return -1;
+                else if (y.cigar.length() < x.cigar.length()) 
+                    return 1;
+            } 
+            if (y.sequence > x.sequence) 
                 return -1;
             else if (y.sequence < x.sequence) 
                 return 1;
-            else if (y.start > x.start) 
-                return -1;
             else if (y.start < x.start) 
+                return -1;
+            else if (y.start > x.start) 
                 return 1;
             else
                 return 0;
         }
     }      
 
-    public class CountComparator implements Comparator<int[]> {
+    public static class paired_hitComparator implements Comparator<paired_hit> {
+        @Override
+        public int compare(paired_hit x, paired_hit y) {
+            if (y.get_score() < x.get_score()) 
+                return -1;
+            else if (y.get_score() > x.get_score()) 
+                return 1;
+            /*else if (y.hit1.genome > x.hit1.genome) 
+                return -1;
+            else if (y.hit1.genome < x.hit1.genome) 
+                return 1;*/
+            else if (y.cigar1 != null && x.cigar1 != null && y.cigar2 != null && x.cigar2 != null){
+                if (y.cigar1.length() + y.cigar2.length() > x.cigar1.length() + x.cigar2.length()) 
+                    return -1;
+                else if (y.cigar1.length() + y.cigar2.length() < x.cigar1.length() + x.cigar2.length()) 
+                    return 1;
+            } 
+            if (y.sequence1 > x.sequence1) 
+                return -1;
+            else if (y.sequence1 < x.sequence1) 
+                return 1;
+            else if (y.start1 > x.start1) 
+                return -1;
+            else if (y.start1 < x.start1) 
+                return 1;
+            else
+                return 0;
+        }
+    }      
+
+    
+    public static class CountComparator implements Comparator<int[]> {
         @Override
         public int compare(int[] x, int[] y) {
             if (y[1] < x[1]) 
@@ -225,7 +384,7 @@ public class GenomeLayer {
         }
     }    
 
-    public class IntComparator implements Comparator<Integer> {
+    public static class IntComparator implements Comparator<Integer> {
 
         @Override
         public int compare(Integer v1, Integer v2) {
@@ -247,9 +406,10 @@ public class GenomeLayer {
         LinkedList<Integer>[][] sequences;
         BoundedLocalSequenceAlignment bounded_aligner;
         LocalSequenceAlignment aligner;
-        PriorityQueue<hit>[][] hits;
-        PriorityQueue<hit>[][] alignments;
-        hitComparator hitcomp;
+        PriorityQueue<single_hit>[][] hits;
+        PriorityQueue<single_hit>[][] alignments;
+        PriorityQueue<single_hit> single_hits;
+        PriorityQueue<paired_hit> paired_hits;
         int anchor_position;
         boolean paired_end;
         CountComparator cnt_comp;
@@ -279,7 +439,6 @@ public class GenomeLayer {
             thread_id = id;
             genome_numbers = gn;
             paired_end = paired; 
-            hitcomp = new hitComparator();
             hits = new PriorityQueue[2][];
             alignments = new PriorityQueue[2][];
             reads_scanner = new SequenceScanner[2];
@@ -289,6 +448,8 @@ public class GenomeLayer {
             
             hits[0] = new PriorityQueue[genome_database.num_genomes + 1];
             alignments[0] = new PriorityQueue[genome_database.num_genomes + 1];
+            single_hits = new PriorityQueue(new single_hitComparator());
+            paired_hits = new PriorityQueue(new paired_hitComparator());
             reads_scanner[0] = new SequenceScanner(sequencingDb[0], 1, 1, K, index_database.get_pre_len());
             sequences[0] = new LinkedList[genome_database.num_genomes + 1];
             locations[0] = new ArrayList[genome_database.num_genomes + 1][];
@@ -301,8 +462,8 @@ public class GenomeLayer {
             }
             for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
                 genome = genome_itr.next();
-                hits[0][genome] = new PriorityQueue(hitcomp);
-                alignments[0][genome] = new PriorityQueue(hitcomp);
+                hits[0][genome] = new PriorityQueue(new single_hitComparator());
+                alignments[0][genome] = new PriorityQueue(new single_hitComparator());
                 locations[0][genome] = new ArrayList[genome_database.num_sequences[genome] + 1];
                 for (j = 1; j <= genome_database.num_sequences[genome]; ++j)
                     locations[0][genome][j] = new ArrayList();
@@ -323,8 +484,8 @@ public class GenomeLayer {
                 }
                 for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
                     genome = genome_itr.next();
-                    hits[1][genome] = new PriorityQueue(hitcomp);
-                    alignments[1][genome] = new PriorityQueue(hitcomp);
+                    hits[1][genome] = new PriorityQueue(new single_hitComparator());
+                    alignments[1][genome] = new PriorityQueue(new single_hitComparator());
                     locations[1][genome] = new ArrayList[genome_database.num_sequences[genome] + 1];
                     for (j = 1; j <= genome_database.num_sequences[genome]; ++j)
                         locations[1][genome][j] = new ArrayList();
@@ -360,7 +521,7 @@ public class GenomeLayer {
                     for (trsc = 1; trsc <= 10000 && read_num <= num_reads; ++trsc, ++counter, read_num = read_number.getAndIncrement()){
                         find_locations(read_num);
                         cluster_and_examine_locations();
-                        num_single_hits += (paired_end ? find_paired_hits() : find_single_hits());
+                        num_single_hits += (paired_end ? report_paired_hits() : report_single_hits());
                         if (counter % (1 + num_reads / 50) == 0)
                             System.out.print("|");
                     }
@@ -554,7 +715,7 @@ public class GenomeLayer {
             double score = -1;
             String cigar;
             boolean forward = ref_start >= 0;
-            hit curr_hit, similar_subject;
+            single_hit curr_hit, similar_subject;
             if (!forward)
                 ref_start = -ref_start - 1;
             reference.setLength(0);
@@ -570,7 +731,7 @@ public class GenomeLayer {
                     offset = similar_subject.offset;
                     length = similar_subject.length;
                     deletions = similar_subject.deletions;
-                    curr_hit = new hit(genome, sequence, score, start, offset, length, deletions, forward, cigar, reference.toString());
+                    curr_hit = new single_hit(genome, sequence, score, start, offset, length, deletions, forward, cigar, reference.toString());
                     hits[mate][genome].add(curr_hit);
                 } else {
                     number_of_alignments.getAndIncrement();
@@ -581,7 +742,7 @@ public class GenomeLayer {
                     offset = bounded_aligner.get_offset();
                     length = bounded_aligner.get_range_length();
                     deletions = bounded_aligner.get_deletions();
-                    curr_hit = new hit(genome, sequence, score, start, offset, length, deletions, forward, cigar, reference.toString());
+                    curr_hit = new single_hit(genome, sequence, score, start, offset, length, deletions, forward, cigar, reference.toString());
                     //System.out.println(curr_hit.toString());
                     hits[mate][genome].add(curr_hit);
                     alignments[mate][genome].add(curr_hit);
@@ -595,7 +756,7 @@ public class GenomeLayer {
                     offset = similar_subject.offset;
                     length = similar_subject.length;
                     deletions = similar_subject.deletions;
-                    curr_hit = new hit(genome, sequence, score, ref_start, offset, length, deletions, forward, cigar, reference.toString());
+                    curr_hit = new single_hit(genome, sequence, score, ref_start, offset, length, deletions, forward, cigar, reference.toString());
                     hits[mate][genome].add(curr_hit);
                 } else {
                     number_of_alignments.getAndIncrement();
@@ -606,7 +767,7 @@ public class GenomeLayer {
                     offset = aligner.get_offset();
                     length = aligner.get_range_length();
                     deletions = aligner.get_deletions();
-                    curr_hit = new hit(genome, sequence, score, ref_start,  offset, length, deletions, forward, cigar, reference.toString());
+                    curr_hit = new single_hit(genome, sequence, score, ref_start,  offset, length, deletions, forward, cigar, reference.toString());
                     //System.out.println(curr_hit.toString());
                     hits[mate][genome].add(curr_hit);
                     alignments[mate][genome].add(curr_hit);
@@ -614,14 +775,14 @@ public class GenomeLayer {
             }
         }
 
-        public hit find_similar_subject(StringBuilder reference, int curr_genome, int mate) {
-            hit similar_alignment = null;
+        public single_hit find_similar_subject(StringBuilder reference, int curr_genome, int mate) {
+            single_hit similar_alignment = null;
             int genome;
             for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
                 genome = genome_itr.next();
                 if (genome > curr_genome)
                     break;
-                Iterator<hit> itr = alignments[mate][genome].iterator();
+                Iterator<single_hit> itr = alignments[mate][genome].iterator();
                 while (itr.hasNext()) {
                     similar_alignment = itr.next();
                     if (are_equal(similar_alignment.reference, reference))
@@ -640,124 +801,158 @@ public class GenomeLayer {
         }
         
         
-        public int find_single_hits(){
-            hit h;
-            hit best_hit = null;
+        public int report_single_hits(){
             int genome, num_single_hits = 0;
+            if (ALIGNMENT_MODE < 0){ // pan-genomic best
+                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                    genome = genome_itr.next();
+                    collect_best_single_hits(genome);
+                }
+                switch (ALIGNMENT_MODE){
+                    case -1: // unique pan-genomic-best
+                        num_single_hits += report_unique_best_single_hit();
+                    break;    
+                    case -2: // one pan-genomic-best
+                        num_single_hits += report_one_best_single_hit(false);
+                    break;    
+                    case -3: // all pan-genomic_bests
+                        num_single_hits += report_all_best_single_hits(false);
+                }
+                single_hits.clear();
+            } else if (ALIGNMENT_MODE > 0){ //genomic best
+                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                    genome = genome_itr.next();
+                    collect_best_single_hits(genome);
+                    switch (ALIGNMENT_MODE){
+                        case 1: // unique genomic-best
+                            num_single_hits += report_unique_best_single_hit();
+                        break;    
+                        case 2: // one genomic-best
+                            num_single_hits += report_one_best_single_hit(true);
+                        break;    
+                        case 3: // all genomic_bests
+                            num_single_hits += report_all_best_single_hits(true);
+                    }
+                    single_hits.clear();
+                }
+            } else 
+                num_single_hits += write_all_single_hits();
+            clear_hits_alignments();
+            return num_single_hits;
+        }
+        
+        public void collect_best_single_hits(int genome){// always return best-scored hits
             double best_score;
-            switch (ALIGNMENT_MODE){
-                case 0: // competetive only-best
-                    best_score =  -1;
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_single_hit(genome, 0);
-                        if (h.score > best_score){
-                            best_score = h.score;
-                            best_hit = h;
-                        }
-                    // clear hits    
-                        hits[0][genome].clear();
-                        alignments[0][genome].clear();
-                    }
-                    num_single_hits += write_one_single_best_hit(best_hit);
-                break;    
-                case 1: // competetive all_bests
-                    best_score =  -1;
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_single_hit(genome, 0);
-                        if (h.score > best_score){
-                            best_score = h.score;
-                            best_hit = h;
-                        }
-                    }
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        num_single_hits += write_all_single_best_hits(best_hit, genome);
-                    //clear hits    
-                        hits[0][genome].clear();
-                        alignments[0][genome].clear();
-                    }
-                break;    
-                case 2: // Normal only-best
-                    best_score =  -1;
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_single_hit(genome, 0);
-                        num_single_hits += write_one_single_best_hit(h);
-                    // clear hits    
-                        hits[0][genome].clear();
-                        alignments[0][genome].clear();
-                    }
-                break;    
-                case 3:// Normal all-bests
-                    best_score =  -1;
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_single_hit(genome, 0);
-                        num_single_hits += write_all_single_best_hits(h, genome); // clears hits
-                    //clear hits    
-                        hits[0][genome].clear();
-                        alignments[0][genome].clear();
-                    }
-            }//switch
-            return num_single_hits;
-        }
-
-        public hit best_single_hit(int genome, int mate){
-            hit h;
-            if (hits[mate][genome].isEmpty())
-                return new hit(genome,0,0,-1,0,0,0,true,null,null);
-            else {
-                h = hits[mate][genome].peek();
-                if (h.score < MIN_MAPPING_SCORE || h.length < MIN_HIT_LENGTH || h.start + h.offset < 0 || h.start + h.offset + h.deletions + reads[mate].length() >= genome_database.sequence_length[h.genome][h.sequence])
-                    return new hit(genome,0,0,-1,0,0,0,true,null,null);
-                else
-                    return h;
-            }
-        }
-
-        public int write_one_single_best_hit(hit best_hit){ // leaves hits empty
-            int flag = 0, num_single_hits = 0;
-            if (best_hit.start == -1)
-                write_single_sam_record(best_hit, flag);
-            else {
-                mapped_to_genome[best_hit.genome]++;
-                write_single_sam_record(best_hit, flag);
-                num_single_hits++;
-            }
-            return num_single_hits;
-        }
-
-        public int write_all_single_best_hits(hit best_hit, int genome){ // leaves hits empty
-            hit h;
-            Iterator<hit> itr;
-            int num_single_hits = 0;
-            int secondary = 0;
-            for (itr = hits[0][genome].iterator(); itr.hasNext(); ){
-                h = itr.next();
-                if (h.length < MIN_HIT_LENGTH || h.start + h.offset < 0 || h.start + h.offset + h.deletions + reads[0].length() >= genome_database.sequence_length[h.genome][h.sequence])
-                    continue;
-                if (h.score == best_hit.score){
-                    if (best_hit.start == -1)
-                        write_single_sam_record(best_hit, 4);
-                    else {
-                        write_single_sam_record(h, secondary);
-                        if (secondary == 0){
-                            secondary = 256;
-                            mapped_to_genome[genome]++;
-                            num_single_hits++;
-                        }
+            single_hit h;
+            Iterator<single_hit> itr;
+            boolean found = false;
+            if (!hits[0][genome].isEmpty()){
+                best_score = hits[0][genome].peek().score;
+                for (itr = hits[0][genome].iterator(); itr.hasNext(); ){
+                    h = itr.next();
+                    if (h.length < MIN_HIT_LENGTH || h.start + h.offset < 0 || h.start + h.offset + h.deletions + reads[0].length() >= genome_database.sequence_length[h.genome][h.sequence])
+                        continue;
+                    if (h.score == best_score){
+                        single_hits.add(h);
+                        found = true;
                     }
                 }
-            }            
+            }
+            if (!found)
+                single_hits.add(new single_hit(genome,0,Double.MIN_VALUE,-1,0,0,0,true,null,null));
+        }
+
+        public int report_unique_best_single_hit(){
+            single_hit h, best_hit;
+            Iterator<single_hit> itr = single_hits.iterator();// Is never empty
+            h = itr.next(); 
+            best_hit = new single_hit(h);
+            if (h.start != -1 && itr.hasNext()){
+                h = itr.next();
+                if (h.score == best_hit.score)
+                    return 0;
+                else {
+                    write_single_sam_record(best_hit, 0);
+                    mapped_to_genome[best_hit.genome]++;
+                    return 1;
+                }
+            } else
+                return 0;
+        }
+
+        public int report_one_best_single_hit(boolean report_unmapped){
+            single_hit best_hit, h;
+            double best_score;
+            Iterator<single_hit> itr;
+            int rand, size; 
+            best_score = single_hits.peek().score;
+            for (size = 0, itr = single_hits.iterator(); itr.hasNext(); ++size){
+                h = itr.next();
+                if (h.score == -1 || h.score != best_score)
+                    break;
+            }
+            rand = (int)(Math.random() * size);
+            for (itr = single_hits.iterator(); rand > 0; --rand)
+                best_hit = itr.next();
+            best_hit = itr.next();
+            if (best_hit.start != -1){
+                write_single_sam_record(best_hit, 0);
+                mapped_to_genome[best_hit.genome]++;
+                return 1;
+            } else {
+                if (report_unmapped)
+                   write_single_sam_record(best_hit, 4);
+                return 0;
+            }   
+        }
+
+        public int report_all_best_single_hits(boolean report_unmapped){
+            single_hit h;
+            int num_hits = 0;
+            double best_score;
+            Iterator<single_hit> itr;
+            h = single_hits.peek(); // Is never empty
+            best_score = h.score;
+            for (itr = single_hits.iterator(); itr.hasNext(); ){
+                h = itr.next();
+                if (h.score == best_score){
+                    if (h.start != -1){
+                            write_single_sam_record(h, 0);
+                            mapped_to_genome[h.genome]++;
+                            num_hits++;
+                    } else if (report_unmapped)
+                        write_single_sam_record(h, 4);
+                }
+            }
+            return num_hits;
+        }
+
+        public int write_all_single_hits(){
+            single_hit h;
+            Iterator<single_hit> itr;
+            int num_single_hits = 0, genome;
+            int secondary;
+            for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                genome = genome_itr.next();
+                secondary = 0;
+                for (itr = hits[0][genome].iterator(); itr.hasNext(); ){
+                    h = itr.next();
+                    if (h.length < MIN_HIT_LENGTH || h.start + h.offset < 0 || h.start + h.offset + h.deletions + reads[0].length() >= genome_database.sequence_length[h.genome][h.sequence])
+                        continue;
+                    write_single_sam_record(h, secondary);
+                    if (secondary == 0){
+                        secondary = 256;
+                        mapped_to_genome[genome]++;
+                        num_single_hits++;
+                    }
+                }  
+            }
             return num_single_hits;
         }
 
-        public void write_single_sam_record(hit h, int flag){
+        public void write_single_sam_record(single_hit h, int flag){
             SAMRecord sam_record = new SAMRecord(null);
             if (h.start == -1){
-                flag |= 4; //unmapped
                 sam_record.setReadName(reads[0].name.toString());
                 sam_record.setFlags(flag);
                 sam_record.setReadString(reads[0].forward_seq.toString());
@@ -788,158 +983,53 @@ public class GenomeLayer {
         }
 
         
-        public int find_paired_hits(){
-            hit[] h;
-            hit[] best_hit = new hit[2];
-            int genome, num_single_hits = 0;
-            double best_score;
-            switch (ALIGNMENT_MODE){
-                case 0: // competetive only-best
-                    best_score =  -1;
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_paired_hit(genome);
-                        if (h[0].score + h[1].score > best_score){
-                            best_score = h[0].score + h[1].score;
-                            best_hit[0] = h[0];
-                            best_hit[1] = h[1];
-                        }
-                    // clear hits    
-                        hits[0][genome].clear();
-                        hits[1][genome].clear();
-                        alignments[0][genome].clear();
-                        alignments[1][genome].clear();
+        public int report_paired_hits(){
+            int genome, num_paired_hits = 0;
+            if (ALIGNMENT_MODE < 0){ // pan-genomic best
+                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                    genome = genome_itr.next();
+                    collect_best_paired_hits(genome);
+                }
+                switch (ALIGNMENT_MODE){
+                    case -1: // unique pan-genomic-best
+                        num_paired_hits += report_unique_best_paired_hit();
+                    break;    
+                    case -2: // one pan-genomic-best
+                        num_paired_hits += report_one_best_paired_hit(false);
+                    break;    
+                    case -3: // all pan-genomic_bests
+                        num_paired_hits += report_all_best_paired_hits(false);
+                }
+                paired_hits.clear();
+            } else if (ALIGNMENT_MODE > 0){ //genomic best
+                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                    genome = genome_itr.next();
+                    collect_best_paired_hits(genome);
+                    switch (ALIGNMENT_MODE){
+                        case 1: // unique genomic-best
+                            num_paired_hits += report_unique_best_paired_hit();
+                        break;    
+                        case 2: // one genomic-best
+                            num_paired_hits += report_one_best_paired_hit(true);
+                        break;    
+                        case 3: // all genomic_bests
+                            num_paired_hits += report_all_best_paired_hits(true);
                     }
-                    num_single_hits += write_one_paired_best_hit(best_hit);
-                break;    
-                case 1: // competetive all_bests
-                    best_score =  -1;
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_paired_hit(genome);
-                        if (h[0].score + h[1].score > best_score){
-                            best_score = h[0].score + h[1].score;
-                            best_hit[0] = h[0];
-                            best_hit[1] = h[1];
-                        }
-                    }
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        num_single_hits += write_all_paired_best_hits(best_hit, genome);
-                    //clear hits    
-                        hits[0][genome].clear();
-                        hits[1][genome].clear();
-                        alignments[0][genome].clear();
-                        alignments[1][genome].clear();
-                    }
-                break;    
-                case 2: // Normal only-best
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_paired_hit(genome);
-                        num_single_hits += write_one_paired_best_hit(h);
-                    // clear hits    
-                        hits[0][genome].clear();
-                        hits[1][genome].clear();
-                        alignments[0][genome].clear();
-                        alignments[1][genome].clear();
-                    }
-                break;    
-                case 3:// Normal all-bests
-                    for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                        genome = genome_itr.next();
-                        h = best_paired_hit(genome);
-                        num_single_hits += write_all_paired_best_hits(h, genome); // clears hits
-                    //clear hits    
-                        hits[0][genome].clear();
-                        hits[1][genome].clear();
-                        alignments[0][genome].clear();
-                        alignments[1][genome].clear();
-                    }
-            }//switch
-            return num_single_hits;
+                    paired_hits.clear();
+                }
+            } else 
+                num_paired_hits += write_all_paired_hits();
+            clear_hits_alignments();
+            return num_paired_hits;
         }
-
-        public hit[] best_paired_hit(int genome){
-            Iterator<hit> itr1, itr2;
+        
+        public void collect_best_paired_hits(int genome){ // May return some less-scored hits as well
+            int frag_len, min_frag_len = Math.max(reads[0].length(), reads[1].length());
+            double best_score =  -1;
+            single_hit h1, h2;
+            paired_hit h;
+            Iterator<single_hit> itr1, itr2;
             boolean found = false;
-            hit h1, h2;
-            hit[] best_hit = new hit[2];
-            double best_score = -1;
-            int frag_len, min_frag_len;
-            min_frag_len = Math.max(reads[0].length(), reads[1].length());
-            if (hits[0][genome].isEmpty()){
-                best_hit[0] = new hit(genome,0,0,-1,0,0,0,true,null,null);
-                h2 = best_single_hit(genome, 1);
-                best_hit[1] = h2.score > MIN_MAPPING_SCORE ? h2 : new hit(genome,0,0,-1,0,0,0,true,null,null);
-            } else if (hits[1][genome].isEmpty()){
-                h1 = best_single_hit(genome, 0);
-                best_hit[0] = h1.score > MIN_MAPPING_SCORE ? h1 : new hit(genome,0,0,-1,0,0,0,true,null,null);
-                best_hit[1] = new hit(genome,0,0,-1,0,0,0,true,null,null);
-            } else {
-                for (itr1 = hits[0][genome].iterator(); itr1.hasNext(); ){
-                    h1 = itr1.next();
-                    if (h1.length < MIN_HIT_LENGTH || h1.start + h1.offset < 0 || h1.start + h1.offset + h1.deletions + reads[0].length() >= genome_database.sequence_length[h1.genome][h1.sequence])
-                        continue;
-                    for (itr2 = hits[1][genome].iterator(); itr2.hasNext(); ){
-                        h2 = itr2.next();
-                        if (h2.length < MIN_HIT_LENGTH || h2.start + h2.offset < 0 || h2.start + h2.offset + h2.deletions + reads[1].length() >= genome_database.sequence_length[h2.genome][h2.sequence])
-                            continue;
-                        if (h1.score > MIN_MAPPING_SCORE && h2.score > MIN_MAPPING_SCORE && h1.score + h2.score > best_score){
-                            frag_len = fragment_length(h1, h2);
-                            if (frag_len >= min_frag_len && frag_len < MAX_FRAGMENT_LENGTH){
-                                found = true;
-                                best_hit[0] = h1;
-                                best_hit[1] = h2;
-                                best_score = h1.score + h2.score;
-                            }
-                        } 
-                    }
-                }
-                if (!found){
-                    h1 = best_single_hit(genome, 0);
-                    h2 = best_single_hit(genome, 1);
-                    best_hit[0] = h1.score > MIN_MAPPING_SCORE ? h1 : new hit(genome,0,0,-1,0,0,0,true,null,null);
-                    best_hit[1] = h2.score > MIN_MAPPING_SCORE ? h2 : new hit(genome,0,0,-1,0,0,0,true,null,null);
-                }
-            }
-            return best_hit;
-        }
-
-        public int write_one_paired_best_hit(hit[] best_hit){ // leaves hits empty
-            int flag1, flag2;
-            flag1 = flag2 = 1;
-            int num_single_hits = 0;
-            if (best_hit[0].start == -1){
-                flag1 |= 4;
-                if (best_hit[1].start == -1)// both unmapped
-                    flag1 |= 8;
-                else{ // only second mapeed
-                    mapped_to_genome[best_hit[1].genome]++;
-                    ++num_single_hits;
-                }
-            } else {
-                mapped_to_genome[best_hit[0].genome]++;
-                ++num_single_hits;
-                if (best_hit[1].start == -1)// only first mapped
-                    flag1 |= 8;
-                else {// both mapped
-                    mapped_to_genome[best_hit[1].genome]++;
-                    flag1 |= 2;
-                    flag2 |= 2;
-                    ++num_single_hits;
-                }
-            }                            
-            write_paired_sam_record(best_hit[0], best_hit[1], flag1,flag2);// both unmapped                    
-            return num_single_hits;
-        }
-
-        public int write_all_paired_best_hits(hit[] best_hit, int genome){ // leaves hits empty
-            hit h1, h2;
-            Iterator<hit> itr1, itr2;
-            int flag1, flag2, num_single_hits = 0, frag_len, min_frag_len = Math.max(reads[0].length(), reads[1].length());
-            int secondary1 = 0, secondary2 = 0;
-            double best_score = best_hit[0].score + best_hit[1].score;
             for (itr1 = hits[0][genome].iterator(); itr1.hasNext(); ){
                 h1 = itr1.next();
                 if (h1.length < MIN_HIT_LENGTH || h1.start + h1.offset < 0 || h1.start + h1.offset + h1.deletions + reads[0].length() >= genome_database.sequence_length[h1.genome][h1.sequence])
@@ -948,15 +1038,159 @@ public class GenomeLayer {
                     h2 = itr2.next();
                     if (h2.length < MIN_HIT_LENGTH || h2.start + h2.offset < 0 || h2.start + h2.offset + h2.deletions + reads[1].length() >= genome_database.sequence_length[h2.genome][h2.sequence])
                         continue;
-                    frag_len = fragment_length(h1, h2);
-                    if (frag_len >= min_frag_len && frag_len <= MAX_FRAGMENT_LENGTH){
-                        if (h1.score + h2.score == best_score){
-                            flag1 = flag2 = 1;
+                    if (h1.score > MIN_MAPPING_SCORE && h2.score > MIN_MAPPING_SCORE && h1.score + h2.score >= best_score){
+                        h = new paired_hit(h1.genome, h1.sequence, h1.score, h1.start, h1.offset, h1.length, h1.deletions, h1.forward, h1.cigar, h1.reference,
+                                           h2.genome, h2.sequence, h2.score, h2.start, h2.offset, h2.length, h2.deletions, h2.forward, h2.cigar, h2.reference);
+                        frag_len = fragment_length(h);
+                        if (frag_len >= min_frag_len && frag_len < MAX_FRAGMENT_LENGTH){
+                            found = true;
+                            paired_hits.add(h);
+                            best_score = h1.score + h2.score;
+                        }
+                    } 
+                }
+            }
+            if (!found){
+                if (hits[0][genome].isEmpty() || (h1 = hits[0][genome].peek()).score <= MIN_MAPPING_SCORE){
+                    if (hits[1][genome].isEmpty() || (h2 = hits[1][genome].peek()).score <= MIN_MAPPING_SCORE)
+                        paired_hits.add(new paired_hit(genome,0,Double.MIN_VALUE,-1,0,0,0,true,null,null,genome,0,Double.MIN_VALUE,-1,0,0,0,true,null,null));
+                    else
+                        paired_hits.add(new paired_hit(genome,0,Double.MIN_VALUE,-1,0,0,0,true,null,null,h2.genome, h2.sequence, h2.score, h2.start, h2.offset, h2.length, h2.deletions, h2.forward, h2.cigar, h2.reference));
+                } else {
+                    if (hits[1][genome].isEmpty() || (h2 = hits[1][genome].peek()).score <= MIN_MAPPING_SCORE)
+                        paired_hits.add(new paired_hit(h1.genome, h1.sequence, h1.score, h1.start, h1.offset, h1.length, h1.deletions, h1.forward, h1.cigar, h1.reference,genome,0,Double.MIN_VALUE,-1,0,0,0,true,null,null));
+                    else
+                        paired_hits.add(new paired_hit(h1.genome, h1.sequence, h1.score, h1.start, h1.offset, h1.length, h1.deletions, h1.forward, h1.cigar, h1.reference,h2.genome, h2.sequence, h2.score, h2.start, h2.offset, h2.length, h2.deletions, h2.forward, h2.cigar, h2.reference));
+                }
+            }
+        }
+
+        public int report_unique_best_paired_hit(){
+            paired_hit h, best_hit;
+            Iterator<paired_hit> itr = paired_hits.iterator();
+            h = itr.next(); 
+            best_hit = new paired_hit(h);
+            if (h.get_max_start() != -1 && itr.hasNext()){
+                h = itr.next();
+                if (h.get_score() == best_hit.get_score())
+                    return 0;
+                else {
+                    if (best_hit.get_min_start() != -1){
+                        write_paired_sam_record(best_hit, new int[]{0, 0});
+                        mapped_to_genome[best_hit.genome1]++;
+                        mapped_to_genome[best_hit.genome2]++;
+                        return 2;
+                    } else if (best_hit.start1 != -1){
+                        write_paired_sam_record(best_hit, new int[]{0, 4});
+                        mapped_to_genome[best_hit.genome1]++;
+                        return 1;
+                    } else if (best_hit.start2 != -1){
+                        write_paired_sam_record(best_hit, new int[]{4, 0});
+                        mapped_to_genome[best_hit.genome2]++;
+                        return 1;
+                    } else
+                        return 0;
+                }
+            } else
+                return 0;
+        }
+
+        public int report_one_best_paired_hit(boolean report_unmapped){ // Unmapped : both segments unmapped
+            paired_hit h, best_hit;
+            double best_score;
+            Iterator<paired_hit> itr;
+            int rand, size; 
+            best_hit = paired_hits.peek(); // Is never empty
+            best_score = best_hit.get_score();
+            for (size = 0, itr = paired_hits.iterator(); itr.hasNext(); ++size){
+                h = itr.next();
+                if (h.get_max_start() == -1 || h.get_score() != best_score)
+                    break;
+            }
+            rand = (int)(Math.random() * size);
+            for (itr = paired_hits.iterator(); rand > 0; --rand)
+                best_hit = itr.next();
+            best_hit = itr.next();
+            if (best_hit.get_min_start() != -1){
+                write_paired_sam_record(best_hit, new int[]{0, 0});
+                mapped_to_genome[best_hit.genome1]++;
+                mapped_to_genome[best_hit.genome2]++;
+                return 2;
+            } else if (best_hit.start1 != -1){
+                write_paired_sam_record(best_hit, new int[]{0, 4});
+                mapped_to_genome[best_hit.genome1]++;
+                return 1;
+            } else if (best_hit.start2 != -1){
+                write_paired_sam_record(best_hit, new int[]{4, 0});
+                mapped_to_genome[best_hit.genome2]++;
+                return 1;
+            } else { 
+                if (report_unmapped)
+                   write_paired_sam_record(best_hit, new int[]{4, 4});
+                return 0;
+            }
+        }
+
+        public int report_all_best_paired_hits(boolean report_unmapped){
+            paired_hit h;
+            int num_hits = 0;
+            double best_score;
+            Iterator<paired_hit> itr;
+            h = paired_hits.peek(); // Is never empty
+            best_score = h.get_score();
+            for (itr = paired_hits.iterator(); itr.hasNext(); ){
+                h = itr.next();
+                if (h.get_score() == best_score){
+                    if (h.get_min_start() != -1){
+                        write_paired_sam_record(h, new int[]{0, 0});
+                        mapped_to_genome[h.genome1]++;
+                        mapped_to_genome[h.genome2]++;
+                        num_hits += 2;
+                    } else if (h.start1 != -1){
+                        write_paired_sam_record(h, new int[]{0, 4});
+                        mapped_to_genome[h.genome1]++;
+                        num_hits += 1;
+                    } else if (h.start2 != -1){
+                        write_paired_sam_record(h, new int[]{4, 0});
+                        mapped_to_genome[h.genome2]++;
+                        num_hits += 1;
+                    } else if (report_unmapped)
+                        write_paired_sam_record(h, new int[]{4, 4});
+                }
+            }
+            return num_hits;
+        }
+
+        public int write_all_paired_hits(){
+            single_hit h1, h2;
+            paired_hit h;
+            Iterator<single_hit> itr1, itr2;
+            int num_single_hits = 0, frag_len, min_frag_len = Math.max(reads[0].length(), reads[1].length());
+            int[] flag = new int[2];
+            int secondary1, secondary2, genome;
+            for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                genome = genome_itr.next();
+                secondary1 = secondary2 = 0;
+                for (itr1 = hits[0][genome].iterator(); itr1.hasNext(); ){
+                    h1 = itr1.next();
+                    if (h1.length < MIN_HIT_LENGTH || h1.start + h1.offset < 0 || h1.start + h1.offset + h1.deletions + reads[0].length() >= genome_database.sequence_length[h1.genome][h1.sequence])
+                        continue;
+                    for (itr2 = hits[1][genome].iterator(); itr2.hasNext(); ){
+                        h2 = itr2.next();
+                        if (h2.length < MIN_HIT_LENGTH || h2.start + h2.offset < 0 || h2.start + h2.offset + h2.deletions + reads[1].length() >= genome_database.sequence_length[h2.genome][h2.sequence])
+                            continue;
+                        h = new paired_hit(h1.genome, h1.sequence, h1.score, h1.start, h1.offset, h1.length, h1.deletions, h1.forward, h1.cigar, h1.reference,
+                                           h2.genome, h2.sequence, h2.score, h2.start, h2.offset, h2.length, h2.deletions, h2.forward, h2.cigar, h2.reference);
+                        frag_len = fragment_length(h);
+                        if (frag_len >= min_frag_len && frag_len <= MAX_FRAGMENT_LENGTH){
+                            flag[0] = flag[1] = 1;
                             if (h1.start == -1){
-                                flag1 |= 4;
+                                flag[0] |= 4;
                                 if (h2.start == -1)// both unmapped
-                                    flag1 |= 8;
-                                write_paired_sam_record(h1, h2, flag1|secondary1,flag2|secondary2);
+                                    flag[0] |= 8;
+                                flag[0] |= secondary1;
+                                flag[1] |= secondary2;
+                                write_paired_sam_record(h, flag);
                                 if (h2.start != -1 && secondary2 == 0){
                                     secondary2 = 256;
                                     mapped_to_genome[genome]++;
@@ -964,12 +1198,14 @@ public class GenomeLayer {
                                 }
                             } else {
                                 if (h2.start == -1)// only first mapped
-                                    flag1 |= 8;
+                                    flag[0] |= 8;
                                 else {// both mapped
-                                    flag1 |= 2;
-                                    flag2 |= 2;
+                                    flag[0] |= 2;
+                                    flag[1] |= 2;
                                 }
-                                write_paired_sam_record(h1, h2, flag1|secondary1,flag2|secondary2);
+                                flag[0] |= secondary1;
+                                flag[1] |= secondary2;
+                                write_paired_sam_record(h, flag);
                                 if (h1.start != -1 && secondary1 == 0){
                                     secondary1 = 256;
                                     mapped_to_genome[genome]++;
@@ -987,129 +1223,146 @@ public class GenomeLayer {
             }
             return num_single_hits;
         }
-        
-        public void write_paired_sam_record(hit h1, hit h2, int flag1, int flag2){
+
+        public void write_paired_sam_record(paired_hit h, int[] flag){
         // the first segment    
             SAMRecord sam_record = new SAMRecord(null);
-            int position1 = h1.start + h1.offset + 1;
-            int position2 = h2.start + h2.offset + 1;;
-            flag1 |= 64; 
-            if (h1.start == -1){
+            int position1 = h.start1 + h.offset1 + 1;
+            int position2 = h.start2 + h.offset2 + 1;;
+            flag[0] |= 64; 
+            if (h.start1 == -1){
                 sam_record.setReadName(reads[0].name.toString());
-                sam_record.setFlags(flag1);
+                sam_record.setFlags(flag[0]);
                 sam_record.setReadString(reads[0].forward_seq.toString());
             } else {
-                flag1 |= h1.forward?0:16; // SEQ being reverse complemented
-                flag1 |= !h2.forward?32:0; // SEQ being reverse complemented
+                flag[0] |= h.forward1?0:16; // SEQ being reverse complemented
+                flag[0] |= !h.forward2?32:0; // SEQ being reverse complemented
             //qname
                 sam_record.setReadName(reads[0].name.toString()); 
             //flag    
-                sam_record.setFlags(flag1); 
+                sam_record.setFlags(flag[0]); 
             //rname    
-                sam_record.setReferenceName(genome_database.sequence_titles[h1.genome][h1.sequence].split("\\s")[0]);
+                sam_record.setReferenceName(genome_database.sequence_titles[h.genome1][h.sequence1].split("\\s")[0]);
             //pos    
                 sam_record.setAlignmentStart(position1);
             //mapq    
-                sam_record.setMappingQuality((int)Math.round(-10 * Math.log10(1 - (h1.score/100.0 - 0.01))) + 1);
-                //sam_record.setMappingQuality((int)Math.round(h1.score));
+                sam_record.setMappingQuality((int)Math.round(-10 * Math.log10(1 - (h.score1/100.0 - 0.01))) + 1);
+                //sam_record.setMappingQuality((int)Math.round(h.score1));
             //cigar    
-                sam_record.setCigarString(h1.cigar);
+                sam_record.setCigarString(h.cigar1);
             //rnext
-                if (h2.start == -1)
+                if (h.start2 == -1)
                     sam_record.setMateReferenceName("*");
                 else 
-                    sam_record.setMateReferenceName(genome_database.sequence_titles[h2.genome][h2.sequence].split("\\s")[0]);
+                    sam_record.setMateReferenceName(genome_database.sequence_titles[h.genome2][h.sequence2].split("\\s")[0]);
             //pnext 
                 sam_record.setMateAlignmentStart(position2);
             //tlen
-                if (h2.start == -1)
+                if (h.start2 == -1)
                     sam_record.setInferredInsertSize(0);
                 else if (position2 > position1)
                     sam_record.setInferredInsertSize(position2 - position1 + reads[0].forward_seq.length());
                 else
                     sam_record.setInferredInsertSize(-(position1 - position2 + reads[1].forward_seq.length()));
             //seq    
-                sam_record.setReadString((h1.forward?reads[0].forward_seq:reads[0].reverse_seq).toString());
+                sam_record.setReadString((h.forward1?reads[0].forward_seq:reads[0].reverse_seq).toString());
             //qual    
             }
-            if (h1.start == -1 && ALIGNMENT_MODE < 2){
+            if (h.start1 == -1 && ALIGNMENT_MODE < 2){
                 try {
                     unmapped.write(">" + sam_record.getReadName() + "\n" + sam_record.getReadString() + "\n");
                 } catch (IOException ex) {
                     Logger.getLogger(GenomeLayer.class.getName()).log(Level.SEVERE, null, ex);
                 }
             } else {
-                synchronized(sam_headers[h1.genome]){
-                    synchronized(sam_writers[h1.genome]){
-                        sam_record.setHeader(sam_headers[h1.genome]);
-                        sam_writers[h1.genome].addAlignment(sam_record);
+                synchronized(sam_headers[h.genome1]){
+                    synchronized(sam_writers[h.genome1]){
+                        sam_record.setHeader(sam_headers[h.genome1]);
+                        sam_writers[h.genome1].addAlignment(sam_record);
                     }
                 }
             }
         // the second segment    
             sam_record = new SAMRecord(null);
-            flag2 |= 128; 
-            if (h2.start == -1){ // not mapped
+            flag[1] |= 128; 
+            if (h.start2 == -1){ // not mapped
                 sam_record.setReadName(reads[1].name.toString());
-                sam_record.setFlags(flag2);
+                sam_record.setFlags(flag[1]);
                 sam_record.setReadString(reads[1].forward_seq.toString());
             } else {
-                flag2 |= h2.forward?0:16; // SEQ being reverse complemented
-                flag2 |= !h1.forward?32:0; // SEQ being reverse complemented
+                flag[1] |= h.forward2?0:16; // SEQ being reverse complemented
+                flag[1] |= !h.forward1?32:0; // SEQ being reverse complemented
             //qname
                 sam_record.setReadName(reads[1].name.toString()); 
             //flag    
-                sam_record.setFlags(flag2); 
+                sam_record.setFlags(flag[1]); 
             //rname    
-                sam_record.setReferenceName(genome_database.sequence_titles[h2.genome][h2.sequence].split("\\s")[0]);
+                sam_record.setReferenceName(genome_database.sequence_titles[h.genome2][h.sequence2].split("\\s")[0]);
             //pos    
                 sam_record.setAlignmentStart(position2);
             //mapq    
-                sam_record.setMappingQuality((int)Math.round(-10 * Math.log10(1 - (h2.score/100.0 - 0.01))) + 1);
-                //sam_record.setMappingQuality((int)Math.round(h2.score));
+                sam_record.setMappingQuality((int)Math.round(-10 * Math.log10(1 - (h.score2/100.0 - 0.01))) + 1);
+                //sam_record.setMappingQuality((int)Math.round(h.score));
             //cigar    
-                sam_record.setCigarString(h2.cigar);
+                sam_record.setCigarString(h.cigar2);
             //rnext
-                if (h1.start == -1)
+                if (h.start1 == -1)
                     sam_record.setMateReferenceName("*");
                 else 
-                    sam_record.setMateReferenceName(genome_database.sequence_titles[h1.genome][h1.sequence].split("\\s")[0]);
+                    sam_record.setMateReferenceName(genome_database.sequence_titles[h.genome1][h.sequence1].split("\\s")[0]);
             //pnext    
                 sam_record.setMateAlignmentStart(position1);
             //tlen
-                if (h1.start == -1)
+                if (h.start1 == -1)
                     sam_record.setInferredInsertSize(0);
                 else if (position2 > position1)
                     sam_record.setInferredInsertSize(-(position2 - position1 + reads[0].forward_seq.length()));
                 else
                     sam_record.setInferredInsertSize(position1 - position2 + reads[1].forward_seq.length());
             //seq    
-                sam_record.setReadString((h2.forward?reads[1].forward_seq:reads[1].reverse_seq).toString());
+                sam_record.setReadString((h.forward2?reads[1].forward_seq:reads[1].reverse_seq).toString());
             //qual    
             }
-            if (h2.start == -1 && ALIGNMENT_MODE < 2){
+            if (h.start2 == -1 && ALIGNMENT_MODE < 2){
                 try {
                     unmapped.write(">" + sam_record.getReadName() + "\n" + sam_record.getReadString() + "\n");
                 } catch (IOException ex) {
                     Logger.getLogger(GenomeLayer.class.getName()).log(Level.SEVERE, null, ex);
                 }
             } else {
-                synchronized(sam_headers[h2.genome]){
-                    synchronized(sam_writers[h2.genome]){
-                        sam_record.setHeader(sam_headers[h2.genome]);
-                        sam_writers[h2.genome].addAlignment(sam_record);
+                synchronized(sam_headers[h.genome2]){
+                    synchronized(sam_writers[h.genome2]){
+                        sam_record.setHeader(sam_headers[h.genome2]);
+                        sam_writers[h.genome2].addAlignment(sam_record);
                     }
                 }
             }        
         }
+
+
+        public void clear_hits_alignments(){    
+            int genome;
+            for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                genome = genome_itr.next();
+                hits[0][genome].clear();
+                alignments[0][genome].clear();
+            }
+            if (paired_end)
+                for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
+                    genome = genome_itr.next();
+                    hits[1][genome].clear();
+                    alignments[1][genome].clear();
+                }
+                
+        }
         
-        public int fragment_length(hit h1, hit h2){
+        public int fragment_length(paired_hit h){
             int frag_len;
             int position1, position2;
-            if (h1.genome == h2.genome && h1.sequence == h2.sequence && h1.forward == !h2.forward){
-                position1 = h1.start + h1.offset;
-                position2 = h2.start + h2.offset;
-                if (h1.forward)
+            if (h.genome1 == h.genome2 && h.sequence1 == h.sequence2 && h.forward1 == !h.forward2){
+                position1 = h.start1 + h.offset1;
+                position2 = h.start2 + h.offset2;
+                if (h.forward1)
                     frag_len = position2 + reads[1].forward_seq.length() - position1;
                 else
                     frag_len = position1 + reads[0].forward_seq.length() - position2;
@@ -1408,10 +1661,10 @@ public class GenomeLayer {
             headers[genome].addProgramRecord(new SAMProgramRecord("PanTools"));
             if (BAMFORMAT)
                 sams[genome] = new SAMFileWriterFactory().makeBAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + (ALIGNMENT_MODE < 2?"/best_":"/pantools_") + genome + ".bam"));
+                        new File(OUTPUT_PATH + "/pantools_" + genome + "." + ALIGNMENT_MODE + ".bam"));
             else
                 sams[genome] = new SAMFileWriterFactory().makeSAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + (ALIGNMENT_MODE < 2?"/best_":"/pantools_") + genome + ".sam"));
+                        new File(OUTPUT_PATH + "/pantools_" + genome + "." + ALIGNMENT_MODE + ".sam"));
         }
         if (ALIGNMENT_MODE < 2){
                 try {
@@ -1538,7 +1791,7 @@ public class GenomeLayer {
                     address[2] = Integer.parseInt(fields[2]);
                     address[3] = Integer.parseInt(fields[3]);
                     if (address[0] <= genomeDb.num_genomes && address[1] <= genomeDb.num_sequences[address[0]] && address[2] >= 1 && address[3] <= genomeDb.sequence_length[address[0]][address[1]]){
-                        start_ptr = locate(address);
+                        start_ptr = locate(graphDb, address, K_SIZE);
                         proper_regions++;
                         //extract_sequence(seq, start_ptr, address, K);
                         out.write(">genome:" + address[0] + " sequence:" + address[1] + " from:" + address[2] + " to:" + address[3] + " length:" + (address[3] - address[2] + 1) + "\n");
@@ -1705,7 +1958,7 @@ public class GenomeLayer {
             for (seq1 = 1; seq1 <= genomeDb.num_sequences[genome1]; ++seq1) {
                 try (Transaction tx = graphDb.beginTx()) {
                     loc1 = 0;
-                    start = locate(new int[]{genome1, seq1, loc1 + 1});
+                    start = locate(graphDb, new int[]{genome1, seq1, loc1 + 1}, K_SIZE);
                     origin1 = "G" + genome1 + "S" + seq1;
                     node = graphDb.getNodeById(start.node_id);
                     side1 = start.canonical ? 'F' : 'R';
@@ -1874,7 +2127,7 @@ public class GenomeLayer {
      * @param address An integer array lile {genome_number, sequence_number, begin_position, end_position}
      * @return A pointer to the genomic position in the pangenome
      */
-    public static IndexPointer locate(int[] addr) {
+    public static IndexPointer locate(GraphDatabaseService graphDb, int[] addr, int K_SIZE) {
         int node_start_pos, low, high, mid , node_len, genomic_pos;
         boolean forward;
         Node node, neighbor, seq_node;
