@@ -1661,10 +1661,10 @@ public class GenomeLayer {
             headers[genome].addProgramRecord(new SAMProgramRecord("PanTools"));
             if (BAMFORMAT)
                 sams[genome] = new SAMFileWriterFactory().makeBAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + "/pantools_" + genome + "." + ALIGNMENT_MODE + ".bam"));
+                        new File(OUTPUT_PATH + "/pantools_" + genome + ".bam"));
             else
                 sams[genome] = new SAMFileWriterFactory().makeSAMWriter(headers[genome], false, 
-                        new File(OUTPUT_PATH + "/pantools_" + genome + "." + ALIGNMENT_MODE + ".sam"));
+                        new File(OUTPUT_PATH + "/pantools_" + genome + ".sam"));
         }
         if (ALIGNMENT_MODE < 2){
                 try {
