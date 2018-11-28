@@ -529,7 +529,7 @@ public class SequenceDatabase {
      * @param path Path of the genome database
      * @param genome_paths_file A text file containing path to the genomes
      */
-    public void add_genomes(String path, String genome_paths_file) {
+    public void add_genomes(String genome_paths_file) {
         int g, s, i, previous_num_genomes = 0;
         BufferedReader in;
         String line;
@@ -548,7 +548,7 @@ public class SequenceDatabase {
                 num_genomes++;
             }
             in.close();
-            in = new BufferedReader(new FileReader(path + INFO_FILE));
+            in = new BufferedReader(new FileReader(db_path + INFO_FILE));
             number_of_bytes = Long.valueOf(in.readLine().split(":")[1]);
             previous_num_genomes = Integer.parseInt(in.readLine().split(":")[1]);
             genome_names = new String[num_genomes + 1];
@@ -605,7 +605,7 @@ public class SequenceDatabase {
             System.out.println(e.getMessage());
             System.exit(1);
         }
-        code_genomes(path, previous_num_genomes);
+        code_genomes(db_path, previous_num_genomes);
         write_info();
     }
 

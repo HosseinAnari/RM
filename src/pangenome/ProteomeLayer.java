@@ -401,12 +401,12 @@ public class ProteomeLayer {
                         m = protein1.length();
                         n = protein2.length();
                         if (m == n)
-                            ints.similarity = aligner.get_match_score(protein1, protein2);
+                            ints.similarity = aligner.get_match_percentage(protein1, protein2);
                         else 
                             if (m < n)
-                            ints.similarity = protein_similarity(protein1, protein2);
+                            ints.similarity = similarity_percantage(protein1, protein2);
                         else
-                            ints.similarity = protein_similarity(protein2, protein1);
+                            ints.similarity = similarity_percantage(protein2, protein1);
                         if (ints.similarity > threshold){
                             similarities.put(ints);
                             num_similarities.getAndIncrement();
@@ -416,7 +416,7 @@ public class ProteomeLayer {
                             num_ints = num_intersections.intValue();
                             if (num_ints > 0){
                                 all_intersections_found = true;
-                                num_ints -= THREADS * processed;
+                                num_ints -= processed;
                             }
                             if (num_ints < 40)
                                 num_ints = 40;
@@ -441,7 +441,7 @@ public class ProteomeLayer {
          * @param p2 The second protein
          * @return The normalized similarity score which is less or equal to 1
          */
-        double protein_similarity(String p1, String p2){
+        double similarity_percantage(String p1, String p2){
             int m, n,i, parts_num = 1, part_len1, part_len2;
             long score = 0, p_score = 0;
             m = p1.length();
@@ -457,7 +457,7 @@ public class ProteomeLayer {
                     subject.append(p2.substring(i * part_len2, Math.min(n, (i + 1) * part_len2)));
                     aligner.align(query, subject);
                     score += aligner.get_similarity_score();
-                    p_score += 5 * query.length();//aligner.perfect_score();
+                    p_score += aligner.get_match_score(query, query);//5 * query.length();
                 }
             } else {
                 query.setLength(0);
@@ -466,7 +466,7 @@ public class ProteomeLayer {
                 subject.append(p2);
                 aligner.align(query, subject);
                 score = aligner.get_similarity_score();
-                p_score = 5 * query.length();//aligner.perfect_score();
+                p_score = aligner.get_match_score(query, query);//5 * query.length();
             }
             return score * 100.0 / p_score;
         }

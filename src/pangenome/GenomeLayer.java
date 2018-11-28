@@ -62,6 +62,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.PriorityQueue;
+import java.util.Queue;
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -419,12 +421,15 @@ public class GenomeLayer {
         int num_found = 0;
         int[] address = new int[3];
         int num_segments;
-        int[] mapped_to_genome;
         LinkedList<Integer> genome_numbers;
         SAMFileWriter[] sam_writers;
         SAMFileHeader[] sam_headers;
         BufferedWriter unmapped;
         SequenceDatabase[] sequencingDb;
+        long[] genome_sizes;
+        int[] mapped;
+        int[] unique;
+        int total_unique = 1;
         
         public Map(int id, LinkedList gn, boolean paired, SAMFileWriter[] sams, SAMFileHeader[] headers, BufferedWriter un, SequenceDatabase[] sd) {
             int i, j, genome;
@@ -453,12 +458,17 @@ public class GenomeLayer {
             reads_scanner[0] = new SequenceScanner(sequencingDb[0], 1, 1, K, index_database.get_pre_len());
             sequences[0] = new LinkedList[genome_database.num_genomes + 1];
             locations[0] = new ArrayList[genome_database.num_genomes + 1][];
+            genome_sizes = new long[genome_database.num_genomes + 1];
+            mapped = new int[genome_database.num_genomes + 1];
+            unique = new int[genome_database.num_genomes + 1];
             reads[0] = new read();
             for (i = 0; i <= genome_database.num_genomes; ++ i){
                 hits[0][i] = null;
                 alignments[0][i] = null;
                 locations[0][i] = null;
                 sequences[0][i] = null;
+                genome_sizes[i] = genome_database.genome_length[i];
+                mapped[i] = 0;
             }
             for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
                 genome = genome_itr.next();
@@ -506,14 +516,9 @@ public class GenomeLayer {
             int read_num, trsc;
             int i;
             int num_reads;
-            int genome, num_single_hits = 0, counter;
+            int num_single_hits = 0, counter;
             num_reads = sequencingDb[0].num_sequences[1];
             counter = thread_id * num_reads / 50 / THREADS;
-            mapped_to_genome = new int[genome_database.num_genomes + 1];
-            for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                genome = genome_itr.next();
-                mapped_to_genome[genome] = 0;
-            }
             read_num = read_number.getAndIncrement();
             num_segments = paired_end ? 2 : 1;
             while (read_num <= num_reads) {
@@ -528,12 +533,13 @@ public class GenomeLayer {
                     tx.success();
                 }
             }// for each read
-            num_mapping.getAndAdd(num_single_hits);
+            //System.out.println(unique[1] + " " + unique[2] + " " + unique[3]);
             for (ListIterator<Integer> genome_itr = genome_numbers.listIterator();genome_itr.hasNext();){
-                genome = genome_itr.next();
-                num_genomic_mapping[genome].getAndAdd(mapped_to_genome[genome]);
+                i = genome_itr.next();
+                num_genomic_mapping[i].getAndAdd(mapped[i]);
+                
             }
-            //System.out.println("\nnum_exceptions:"+num_exceptions+" num_neighbors:"+num_neighbors+" num_kmers:"+num_kmers+" num_found:"+num_found);
+            num_mapping.getAndAdd(num_single_hits);
         }
         
         public void get_read(int read_num, int mate){
@@ -873,7 +879,7 @@ public class GenomeLayer {
                     return 0;
                 else {
                     write_single_sam_record(best_hit, 0);
-                    mapped_to_genome[best_hit.genome]++;
+                    mapped[best_hit.genome]++;
                     return 1;
                 }
             } else
@@ -881,23 +887,23 @@ public class GenomeLayer {
         }
 
         public int report_one_best_single_hit(boolean report_unmapped){
-            single_hit best_hit, h;
-            double best_score;
+            single_hit h, best_hit;
+            double coverage, best_coverage = 0;
             Iterator<single_hit> itr;
-            int rand, size; 
-            best_score = single_hits.peek().score;
-            for (size = 0, itr = single_hits.iterator(); itr.hasNext(); ++size){
+            best_hit = single_hits.peek();
+            for (itr = single_hits.iterator(); itr.hasNext();){
                 h = itr.next();
-                if (h.score == -1 || h.score != best_score)
+                if (h.start == -1 || h.score != best_hit.score)
                     break;
+                coverage = mapped[h.genome] / genome_sizes[h.genome];
+                if (coverage >= best_coverage){
+                    best_coverage = coverage;
+                    best_hit = h;
+                }
             }
-            rand = (int)(Math.random() * size);
-            for (itr = single_hits.iterator(); rand > 0; --rand)
-                best_hit = itr.next();
-            best_hit = itr.next();
             if (best_hit.start != -1){
                 write_single_sam_record(best_hit, 0);
-                mapped_to_genome[best_hit.genome]++;
+                mapped[best_hit.genome]++;
                 return 1;
             } else {
                 if (report_unmapped)
@@ -905,7 +911,7 @@ public class GenomeLayer {
                 return 0;
             }   
         }
-
+        
         public int report_all_best_single_hits(boolean report_unmapped){
             single_hit h;
             int num_hits = 0;
@@ -918,7 +924,7 @@ public class GenomeLayer {
                 if (h.score == best_score){
                     if (h.start != -1){
                             write_single_sam_record(h, 0);
-                            mapped_to_genome[h.genome]++;
+                            mapped[h.genome]++;
                             num_hits++;
                     } else if (report_unmapped)
                         write_single_sam_record(h, 4);
@@ -942,7 +948,7 @@ public class GenomeLayer {
                     write_single_sam_record(h, secondary);
                     if (secondary == 0){
                         secondary = 256;
-                        mapped_to_genome[genome]++;
+                        mapped[genome]++;
                         num_single_hits++;
                     }
                 }  
@@ -1077,16 +1083,16 @@ public class GenomeLayer {
                 else {
                     if (best_hit.get_min_start() != -1){
                         write_paired_sam_record(best_hit, new int[]{0, 0});
-                        mapped_to_genome[best_hit.genome1]++;
-                        mapped_to_genome[best_hit.genome2]++;
+                        mapped[best_hit.genome1]++;
+                        mapped[best_hit.genome2]++;
                         return 2;
                     } else if (best_hit.start1 != -1){
                         write_paired_sam_record(best_hit, new int[]{0, 4});
-                        mapped_to_genome[best_hit.genome1]++;
+                        mapped[best_hit.genome1]++;
                         return 1;
                     } else if (best_hit.start2 != -1){
                         write_paired_sam_record(best_hit, new int[]{4, 0});
-                        mapped_to_genome[best_hit.genome2]++;
+                        mapped[best_hit.genome2]++;
                         return 1;
                     } else
                         return 0;
@@ -1097,32 +1103,36 @@ public class GenomeLayer {
 
         public int report_one_best_paired_hit(boolean report_unmapped){ // Unmapped : both segments unmapped
             paired_hit h, best_hit;
-            double best_score;
+            int c = 0, freq = 0, sum_freq = 1;
             Iterator<paired_hit> itr;
-            int rand, size; 
-            best_hit = paired_hits.peek(); // Is never empty
-            best_score = best_hit.get_score();
-            for (size = 0, itr = paired_hits.iterator(); itr.hasNext(); ++size){
+            best_hit = paired_hits.peek();
+            for (itr = paired_hits.iterator(); itr.hasNext(); ++c){
                 h = itr.next();
-                if (h.get_max_start() == -1 || h.get_score() != best_score)
+                if (h.get_max_start() == -1 || h.get_score() != best_hit.get_score())
+                    break;
+                sum_freq += unique[h.genome1];
+            }
+            if (c == 1)
+                unique[best_hit.genome1]++;
+            for (itr = paired_hits.iterator(); itr.hasNext() && c > 0; --c){
+                best_hit = itr.next();
+                freq = unique[best_hit.genome1];
+                if (Math.random() <= (double)freq / sum_freq)
                     break;
             }
-            rand = (int)(Math.random() * size);
-            for (itr = paired_hits.iterator(); rand > 0; --rand)
-                best_hit = itr.next();
-            best_hit = itr.next();
             if (best_hit.get_min_start() != -1){
                 write_paired_sam_record(best_hit, new int[]{0, 0});
-                mapped_to_genome[best_hit.genome1]++;
-                mapped_to_genome[best_hit.genome2]++;
+                mapped[best_hit.genome1]++;
+                mapped[best_hit.genome2]++;
+                write_paired_sam_record(best_hit, new int[]{0, 0});
                 return 2;
             } else if (best_hit.start1 != -1){
                 write_paired_sam_record(best_hit, new int[]{0, 4});
-                mapped_to_genome[best_hit.genome1]++;
+                mapped[best_hit.genome1]++;
                 return 1;
             } else if (best_hit.start2 != -1){
                 write_paired_sam_record(best_hit, new int[]{4, 0});
-                mapped_to_genome[best_hit.genome2]++;
+                mapped[best_hit.genome2]++;
                 return 1;
             } else { 
                 if (report_unmapped)
@@ -1143,16 +1153,16 @@ public class GenomeLayer {
                 if (h.get_score() == best_score){
                     if (h.get_min_start() != -1){
                         write_paired_sam_record(h, new int[]{0, 0});
-                        mapped_to_genome[h.genome1]++;
-                        mapped_to_genome[h.genome2]++;
+                        mapped[h.genome1]++;
+                        mapped[h.genome2]++;
                         num_hits += 2;
                     } else if (h.start1 != -1){
                         write_paired_sam_record(h, new int[]{0, 4});
-                        mapped_to_genome[h.genome1]++;
+                        mapped[h.genome1]++;
                         num_hits += 1;
                     } else if (h.start2 != -1){
                         write_paired_sam_record(h, new int[]{4, 0});
-                        mapped_to_genome[h.genome2]++;
+                        mapped[h.genome2]++;
                         num_hits += 1;
                     } else if (report_unmapped)
                         write_paired_sam_record(h, new int[]{4, 4});
@@ -1193,7 +1203,7 @@ public class GenomeLayer {
                                 write_paired_sam_record(h, flag);
                                 if (h2.start != -1 && secondary2 == 0){
                                     secondary2 = 256;
-                                    mapped_to_genome[genome]++;
+                                    mapped[genome]++;
                                     ++num_single_hits;
                                 }
                             } else {
@@ -1208,12 +1218,12 @@ public class GenomeLayer {
                                 write_paired_sam_record(h, flag);
                                 if (h1.start != -1 && secondary1 == 0){
                                     secondary1 = 256;
-                                    mapped_to_genome[genome]++;
+                                    mapped[genome]++;
                                     ++num_single_hits;
                                 }
                                 if (h2.start != -1 && secondary2 == 0){
                                     secondary2 = 256;
-                                    mapped_to_genome[genome]++;
+                                    mapped[genome]++;
                                     ++num_single_hits;
                                 }
                             }                            
@@ -1379,64 +1389,8 @@ public class GenomeLayer {
      * @param pangenome_path Path to the database folder
      */  
     public void initialize_pangenome() {
-    // If a database folder is already exist in the specified path, removes all the content of it.
-        File theDir;
-        Node pangenome_node = null;
-        startTime = System.currentTimeMillis();
-        if (PATH_TO_THE_PANGENOME_DATABASE == null){
-            System.out.println("PATH_TO_THE_PANGENOME_DATABASE is empty.");
-            System.exit(1);
-        }
-        theDir = new File(PATH_TO_THE_PANGENOME_DATABASE);
-        if (theDir.exists()) {
-            try {
-                FileUtils.deleteRecursively(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH));
-            } catch (IOException ioe) {
-                System.out.println("Failed to delete the graph database " + PATH_TO_THE_PANGENOME_DATABASE);
-                System.exit(1);  
-            }
-        // creating graph database
-            graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
-                .setConfig(keep_logical_logs, "4 files").newGraphDatabase();  
-            registerShutdownHook(graphDb);
-        // connecting to genome database
-            theDir = new File(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
-            if (theDir.exists()) {
-                System.out.println("Connecting to the existing genome databases at " + PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
-                genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
-            } else
-                genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE);
-        // connecting to index database
-            theDir = new File(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
-            if (theDir.exists()) {
-                System.out.println("Connecting to the existing index databases at " + PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
-                indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, "sorted");
-                indexDb.clear_pointer_database();
-            } else {
-                indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE, genomeDb, K_SIZE);
-            }
-            K_SIZE = indexDb.get_K();
-            genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
-        } else {
-            try {
-                if (PATH_TO_THE_GENOMES_FILE == null){
-                    System.out.println("PATH_TO_THE_GENOMES_FILE is empty.");
-                    System.exit(1);
-                }                
-                System.out.println("Creating a database at " + PATH_TO_THE_PANGENOME_DATABASE);
-                theDir.mkdir();
-                graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
-                        .setConfig(keep_logical_logs, "4 files").newGraphDatabase();  
-                registerShutdownHook(graphDb);
-                genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE);
-                indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE, genomeDb, K_SIZE);
-                K_SIZE = indexDb.get_K();
-                genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
-         } catch (SecurityException se) {
-                System.out.println("Failed to create directory " + PATH_TO_THE_PANGENOME_DATABASE);
-                System.exit(1);
-            }
-        }
+        Node pangenome_node;
+        create_database();
         try (Transaction tx = graphDb.beginTx()) {
             pangenome_node = graphDb.createNode(pangenome_label);
             pangenome_node.setProperty("k_mer_size", K_SIZE);
@@ -1487,14 +1441,37 @@ public class GenomeLayer {
     public void add_genomes() {
         int previous_num_genomes;
         Node pangenome_node;
+        Scanner s;
+        String str;
+        s = new Scanner(System.in);
         if (PATH_TO_THE_GENOMES_FILE == null){
             System.out.println("PATH_TO_THE_GENOMES_FILE is empty.");
             System.exit(1);
         }
         if (! new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH).exists()) {
-            System.out.println("No database found in " + PATH_TO_THE_PANGENOME_DATABASE);
+            System.out.println("No graph database found in " + PATH_TO_THE_PANGENOME_DATABASE);
             System.exit(1);
         }
+        if (! new File(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH).exists()) {
+            System.out.println("No index database found in " + PATH_TO_THE_PANGENOME_DATABASE);
+            System.exit(1);
+        }
+        if (! new File(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH).exists()) {
+            System.out.println("No genome database found in " + PATH_TO_THE_PANGENOME_DATABASE);
+            System.out.println("Do you want to reconstruct it from the graph database [y/n]? ");
+            str = s.nextLine().toLowerCase();
+            while (!str.equals("y") && !str.equals("n")){
+            System.out.println("Do you want to reconstruct it from the graph database [y/n]? ");
+                 str = s.nextLine().toLowerCase();
+            }
+            if (str.equals("y")){
+                rebuild_genome_database();
+            } else {
+                System.out.println("Exiting the program...");
+                System.exit(1);  
+            }
+        } else
+            genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
         graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
                 .setConfig(keep_logical_logs, "4 files").newGraphDatabase();
         registerShutdownHook(graphDb);
@@ -1514,12 +1491,7 @@ public class GenomeLayer {
             previous_num_genomes = (int) pangenome_node.getProperty("num_genomes");
             tx.success();
         }
-    // if the genome database is not available, reconstruct it.    
-        if (!Files.exists(Paths.get(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH)))
-            rebuild_genome_database();
-        else
-            genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
-        genomeDb.add_genomes(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE);
+        genomeDb.add_genomes(PATH_TO_THE_GENOMES_FILE);
         indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE, genomeDb, graphDb, previous_num_genomes);
         genome_scanner = new SequenceScanner(genomeDb, previous_num_genomes + 1, 1, K_SIZE, indexDb.get_pre_len());
     // the sequences should be dropped out as they will change and add_sequence_properties() function will rebuild them.    
@@ -1556,13 +1528,13 @@ public class GenomeLayer {
         System.out.println("genome.db size: " + getFolderSize(new File(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH)) + " MB");
     }
 
-    public void rebuild_genome_database(){
+    public SequenceDatabase rebuild_genome_database(){
     // read genomes information from the graph and rebuild the genomes database
         int j, len;
         long byte_number = 0;
         int[] address = new int[4];
         Node start, seq_node;
-        genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, graphDb);
+        SequenceDatabase genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, graphDb);
         StringBuilder seq = new StringBuilder();
         for (address[0] = 1; address[0] <= genomeDb.num_genomes; ++address[0]) {
             for (address[1] = 1; address[1] <= genomeDb.num_sequences[address[0]]; ++address[1]) {
@@ -1584,6 +1556,7 @@ public class GenomeLayer {
                 }
             }
         }
+        return genomeDb;
     }
     
     public void remove_genomes() {
@@ -1598,6 +1571,10 @@ public class GenomeLayer {
         BufferedReader in;
         BufferedWriter unmapped = null;
         boolean paired;
+        File theDir;
+        Scanner s;
+        String str;
+        s = new Scanner(System.in);
         if (PATH_TO_THE_FIRST_SRA == null){
             System.out.println("PATH_TO_THE_FIRST_SRA is empty.");
             System.exit(1);
@@ -1613,6 +1590,30 @@ public class GenomeLayer {
         }
         if (OUTPUT_PATH.equals(""))
             OUTPUT_PATH = PATH_TO_THE_PANGENOME_DATABASE;
+        if (! new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH).exists()) {
+            System.out.println("No graph database found in " + PATH_TO_THE_PANGENOME_DATABASE);
+            System.exit(1);
+        }
+        if (! new File(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH).exists()) {
+            System.out.println("No index database found in " + PATH_TO_THE_PANGENOME_DATABASE);
+            System.exit(1);
+        }
+        if (! new File(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH).exists()) {
+            System.out.println("No genome database found in " + PATH_TO_THE_PANGENOME_DATABASE);
+            System.out.println("Do you want to reconstruct it from the graph database [y/n]? ");
+            str = s.nextLine().toLowerCase();
+            while (!str.equals("y") && !str.equals("n")){
+            System.out.println("Do you want to reconstruct it from the graph database [y/n]? ");
+                 str = s.nextLine().toLowerCase();
+            }
+            if (str.equals("y")){
+                rebuild_genome_database();
+            } else {
+                System.out.println("Exiting the program...");
+                System.exit(1);  
+            }
+        } else
+            genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
         graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
                 .setConfig(keep_logical_logs, "4 files").newGraphDatabase();
         registerShutdownHook(graphDb);
@@ -1625,7 +1626,6 @@ public class GenomeLayer {
             }
             tx.success();
         }
-        genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
         num_genomic_mapping = new AtomicInteger[genomeDb.num_genomes + 1];
         num_mapping = new AtomicInteger(0);
         read_number = new AtomicInteger(1);
@@ -1674,11 +1674,59 @@ public class GenomeLayer {
             }
         }
         SequenceDatabase[] sequencingDb = new SequenceDatabase[2];
-        sequencingDb[0] = new SequenceDatabase(OUTPUT_PATH + "/sra1", PATH_TO_THE_FIRST_SRA);
+        theDir = new File(OUTPUT_PATH + "/sra1");
+        if (theDir.exists()) {
+            System.out.println("A sequencing databases already exists at " + OUTPUT_PATH + "/sra1" + ".");
+            System.out.println("Do you want to reuse it [y/n]? ");
+            str = s.nextLine().toLowerCase();
+            while (!str.equals("y") && !str.equals("n")){
+                 System.out.println("Do you want to reuse it [y/n]? ");
+                 str = s.nextLine().toLowerCase();
+            }
+            if (str.equals("y"))
+               sequencingDb[0] = new SequenceDatabase(OUTPUT_PATH + "/sra1");
+            else{
+                try {
+                    FileUtils.deleteRecursively(new File(OUTPUT_PATH + "/sra1"));
+                } catch (IOException ioe) {
+                    System.out.println("Failed to delete the sequencing database");
+                    System.exit(1);  
+                }
+                sequencingDb[0] = new SequenceDatabase(OUTPUT_PATH + "/sra1", PATH_TO_THE_FIRST_SRA);
+            } 
+        } else
+            sequencingDb[0] = new SequenceDatabase(OUTPUT_PATH + "/sra1", PATH_TO_THE_FIRST_SRA);
         if (paired){
-            sequencingDb[1] = new SequenceDatabase(OUTPUT_PATH + "/sra2", PATH_TO_THE_SECOND_SRA);
+            theDir = new File(OUTPUT_PATH + "/sra2");
+            if (theDir.exists()) {
+                System.out.println("A sequencing databases already exists at " + OUTPUT_PATH + "/sra2" + ".");
+                System.out.println("Do you want to reuse it [y/n]? ");
+                str = s.nextLine().toLowerCase();
+                while (!str.equals("y") && !str.equals("n")){
+                     System.out.println("Do you want to reuse it [y/n]? ");
+                     str = s.nextLine().toLowerCase();
+                }
+                if (str.equals("y"))
+                   sequencingDb[1] = new SequenceDatabase(OUTPUT_PATH + "/sra2");
+                else{
+                    try {
+                        FileUtils.deleteRecursively(new File(OUTPUT_PATH + "/sra2"));
+                    } catch (IOException ioe) {
+                        System.out.println("Failed to delete the sequencing database");
+                        System.exit(1);  
+                    }
+                    sequencingDb[1] = new SequenceDatabase(OUTPUT_PATH + "/sra2", PATH_TO_THE_SECOND_SRA);
+                } 
+            } else
+                sequencingDb[1] = new SequenceDatabase(OUTPUT_PATH + "/sra2", PATH_TO_THE_SECOND_SRA);
             if (sequencingDb[0].num_sequences[1] != sequencingDb[1].num_sequences[1]){
                 System.err.println("Paired-end libraries contain different number of reads.");
+                new File(OUTPUT_PATH + "/sra1/sequences.db").delete();
+                new File(OUTPUT_PATH + "/sra2/sequences.db").delete();
+                new File(OUTPUT_PATH + "/sra1/sequences.info").delete();
+                new File(OUTPUT_PATH + "/sra2/sequences.info").delete();
+                new File(OUTPUT_PATH + "/sra1").delete();
+                new File(OUTPUT_PATH + "/sra2").delete();
                 System.exit(1);
             }
         }
@@ -1717,16 +1765,119 @@ public class GenomeLayer {
                 }
             }
         }
-        new File(OUTPUT_PATH + "/sra1/sequences.db").delete();
-        new File(OUTPUT_PATH + "/sra2/sequences.db").delete();
-        new File(OUTPUT_PATH + "/sra1/sequences.info").delete();
-        new File(OUTPUT_PATH + "/sra2/sequences.info").delete();
-        new File(OUTPUT_PATH + "/sra1").delete();
-        new File(OUTPUT_PATH + "/sra2").delete();
         genomeDb.close();
         graphDb.shutdown();
     }
     
+    public void create_database(){
+        File theDir;
+        Scanner s;
+        String str;
+        s = new Scanner(System.in);
+        startTime = System.currentTimeMillis();
+        if (PATH_TO_THE_PANGENOME_DATABASE == null){
+            System.out.println("PATH_TO_THE_PANGENOME_DATABASE is empty.");
+            System.exit(1);
+        }
+        theDir = new File(PATH_TO_THE_PANGENOME_DATABASE);
+        if (theDir.exists()) {
+        // creating a graph database
+            theDir = new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH);
+            if (theDir.exists()) {
+                System.out.println("A graph databases already exists at " + PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH + ".");
+                System.out.println("Do you want to remove it [y/n]? ");
+                str = s.nextLine().toLowerCase();
+                while (!str.equals("y") && !str.equals("n")){
+                     System.out.println("Do you want to remove it [y/n]? ");
+                     str = s.nextLine().toLowerCase();
+                }
+                if (str.equals("y")){
+                    try {
+                        FileUtils.deleteRecursively(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH));
+                    } catch (IOException ioe) {
+                        System.out.println("Failed to delete the graph database");
+                        System.exit(1);  
+                    }
+                } else {
+                    System.out.println("Exiting the program...");
+                    System.exit(1);  
+                }
+            }
+            graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
+                .setConfig(keep_logical_logs, "4 files").newGraphDatabase();  
+            registerShutdownHook(graphDb);
+        // connecting to genome database
+            theDir = new File(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
+            if (theDir.exists()) {
+                System.out.println("A genome databases already exists at " + PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH + ".");
+                System.out.println("Do you want to reuse it [y/n]? ");
+                str = s.nextLine().toLowerCase();
+                while (!str.equals("y") && !str.equals("n")){
+                     System.out.println("Do you want to reuse it [y/n]? ");
+                     str = s.nextLine().toLowerCase();
+                }
+                if (str.equals("y"))
+                    genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
+                else {
+                    try {
+                        FileUtils.deleteRecursively(new File(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH));
+                    } catch (IOException ioe) {
+                        System.out.println("Failed to delete the genome database!");
+                        System.exit(1);  
+                    }                    
+                    genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE);
+                }
+            } else
+                genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE);
+        // connecting to index database
+            theDir = new File(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH);
+            if (theDir.exists()) {
+                System.out.println("An index databases already exists at " + PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH + ".");
+                System.out.println("Do you want to reuse it [y/n]? ");
+                str = s.nextLine().toLowerCase();
+                while (!str.equals("y") && !str.equals("n")){
+                     System.out.println("Do you want to reuse it [y/n]? ");
+                     str = s.nextLine().toLowerCase();
+                }
+                if (str.equals("y")){
+                    indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, "sorted");
+                    indexDb.clear_pointer_database();
+                } else {
+                    try {
+                        FileUtils.deleteRecursively(new File(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH));
+                    } catch (IOException ioe) {
+                        System.out.println("Failed to delete the index database!");
+                        System.exit(1);  
+                    }                    
+                }
+                indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE, genomeDb, K_SIZE);
+            } else
+                indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE, genomeDb, K_SIZE);
+            K_SIZE = indexDb.get_K();
+            genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
+        } else {
+            try {
+                if (PATH_TO_THE_GENOMES_FILE == null){
+                    System.out.println("PATH_TO_THE_GENOMES_FILE is empty.");
+                    System.exit(1);
+                }                
+                System.out.println("Creating a database at " + PATH_TO_THE_PANGENOME_DATABASE);
+                theDir.mkdir();
+                graphDb = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(new File(PATH_TO_THE_PANGENOME_DATABASE + GRAPH_DATABASE_PATH))
+                        .setConfig(keep_logical_logs, "4 files").newGraphDatabase();  
+                registerShutdownHook(graphDb);
+                genomeDb = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE);
+                indexDb = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, PATH_TO_THE_GENOMES_FILE, genomeDb, K_SIZE);
+                K_SIZE = indexDb.get_K();
+                genome_scanner = new SequenceScanner(genomeDb, 1, 1, K_SIZE, indexDb.get_pre_len());
+         } catch (SecurityException se) {
+                System.out.println("Failed to create directory " + PATH_TO_THE_PANGENOME_DATABASE);
+                System.exit(1);
+            }
+        }
+        
+    }
+        
     /**
      * Retrieves the sequence of a number of genomic regions from the pangenome and stores them in a FASTA file.
      * 
