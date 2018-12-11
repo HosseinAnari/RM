@@ -835,10 +835,13 @@ public class GenomeLayer {
                     case -1: // unique pan-genomic-best
                         num_single_hits += report_unique_best_single_hit();
                     break;    
-                    case -2: // one pan-genomic-best
-                        num_single_hits += report_one_best_single_hit(false);
+                    case -2: // selected pan-genomic-best
+                        num_single_hits += report_selected_best_single_hit(false);
                     break;    
-                    case -3: // all pan-genomic_bests
+                    case -3: // random pan-genomic_bests
+                        num_single_hits += report_random_best_single_hit(false);
+                        break;
+                    case -4: // all pan-genomic_bests
                         num_single_hits += report_all_best_single_hits(false);
                 }
                 single_hits.clear();
@@ -851,7 +854,7 @@ public class GenomeLayer {
                             num_single_hits += report_unique_best_single_hit();
                         break;    
                         case 2: // one genomic-best
-                            num_single_hits += report_one_best_single_hit(true);
+                            num_single_hits += report_random_best_single_hit(true);
                         break;    
                         case 3: // all genomic_bests
                             num_single_hits += report_all_best_single_hits(true);
@@ -903,7 +906,7 @@ public class GenomeLayer {
                 return 0;
         }
 
-        public int report_one_best_single_hit(boolean report_unmapped){
+        public int report_selected_best_single_hit(boolean report_unmapped){
             single_hit h, best_hit;
             int c, count;
             double rnd, freq, sum_freq;
@@ -935,6 +938,30 @@ public class GenomeLayer {
             }   
         }
         
+        public int report_random_best_single_hit(boolean report_unmapped){
+            single_hit h, best_hit;
+            int c, count;
+            Iterator<single_hit> itr;
+            best_hit = single_hits.peek();
+            for (count = 0, itr = single_hits.iterator(); itr.hasNext(); ++count){
+                h = itr.next();
+                if (h.start == -1 || h.score != best_hit.score)
+                    break;
+            }
+            count = (int)(rand.nextDouble() * count);
+            for (c = 0, itr = single_hits.iterator(); itr.hasNext() && c < count; ++c)
+                best_hit = itr.next();
+            if (best_hit.start != -1){
+                write_single_sam_record(best_hit, 0);
+                mapped[best_hit.genome]++;
+                return 1;
+            } else {
+                if (report_unmapped)
+                   write_single_sam_record(best_hit, 4);
+                return 0;
+            }   
+        }
+
         public int report_all_best_single_hits(boolean report_unmapped){
             single_hit h;
             int num_hits = 0;
@@ -1023,10 +1050,13 @@ public class GenomeLayer {
                     case -1: // unique pan-genomic-best
                         num_paired_hits += report_unique_best_paired_hit();
                     break;    
-                    case -2: // one pan-genomic-best
-                        num_paired_hits += report_one_best_paired_hit(false);
+                    case -2: // selected pan-genomic-best
+                        num_paired_hits += report_selected_best_paired_hit(false);
                     break;    
-                    case -3: // all pan-genomic_bests
+                    case -3: // random pan-genomic-best
+                        num_paired_hits += report_random_best_paired_hit(false);
+                    break;    
+                    case -4: // all pan-genomic_bests
                         num_paired_hits += report_all_best_paired_hits(false);
                 }
                 paired_hits.clear();
@@ -1039,7 +1069,7 @@ public class GenomeLayer {
                             num_paired_hits += report_unique_best_paired_hit();
                         break;    
                         case 2: // one genomic-best
-                            num_paired_hits += report_one_best_paired_hit(true);
+                            num_paired_hits += report_random_best_paired_hit(true);
                         break;    
                         case 3: // all genomic_bests
                             num_paired_hits += report_all_best_paired_hits(true);
@@ -1124,7 +1154,7 @@ public class GenomeLayer {
                 return 0;
         }
 
-        public int report_one_best_paired_hit(boolean report_unmapped){ // Unmapped : both segments unmapped
+        public int report_selected_best_paired_hit(boolean report_unmapped){ // Unmapped : both segments unmapped
             paired_hit h, best_hit;
             int c, count;
             double rnd, freq, sum_freq;
@@ -1145,6 +1175,39 @@ public class GenomeLayer {
             }
             if (count == 1)
                 unique[best_hit.genome1]++;
+            if (best_hit.get_min_start() != -1){
+                write_paired_sam_record(best_hit, new int[]{0, 0});
+                mapped[best_hit.genome1]++;
+                mapped[best_hit.genome2]++;
+                return 2;
+            } else if (best_hit.start1 != -1){
+                write_paired_sam_record(best_hit, new int[]{0, 4});
+                mapped[best_hit.genome1]++;
+                return 1;
+            } else if (best_hit.start2 != -1){
+                write_paired_sam_record(best_hit, new int[]{4, 0});
+                mapped[best_hit.genome2]++;
+                return 1;
+            } else { 
+                if (report_unmapped)
+                   write_paired_sam_record(best_hit, new int[]{4, 4});
+                return 0;
+            }
+        }
+
+        public int report_random_best_paired_hit(boolean report_unmapped){ // Unmapped : both segments unmapped
+            paired_hit h, best_hit;
+            int c, count;
+            Iterator<paired_hit> itr;
+            best_hit = paired_hits.peek();
+            for (count = 0, itr = paired_hits.iterator(); itr.hasNext(); ++count){
+                h = itr.next();
+                if (h.get_max_start() == -1 || h.get_score() != best_hit.get_score())
+                    break;
+            }
+            count = (int)(rand.nextDouble() * count);
+            for (c = 0, itr = paired_hits.iterator(); itr.hasNext() && c < count; ++c)
+                best_hit = itr.next();
             if (best_hit.get_min_start() != -1){
                 write_paired_sam_record(best_hit, new int[]{0, 0});
                 mapped[best_hit.genome1]++;

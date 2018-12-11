@@ -49,7 +49,6 @@ import static pantools.Pantools.PATH_TO_THE_ANNOTATIONS_FILE;
 import static pantools.Pantools.PATH_TO_THE_GENOME_NUMBERS_FILE;
 import static pantools.Pantools.PATH_TO_THE_PANGENOME_DATABASE;
 import static pantools.Pantools.annotation_label;
-import static pantools.Pantools.broken_protein_label;
 import static pantools.Pantools.coding_gene_label;
 import static pantools.Pantools.db_node;
 import static pantools.Pantools.exon_label;
@@ -616,8 +615,7 @@ public class AnnotationLayer {
                                     mrna_node.setProperty("protein_ID", mRNA_id);
                                     mrna_node.setProperty("protein_length", protein.length());
                                     if (protein.charAt(0) != 'M'  || protein.charAt(protein.length() - 1) != '*'){
-                                        log_file.write("Protein ID = " + mRNA_id + " miss-annotated!\n");
-                                        mrna_node.addLabel(broken_protein_label);
+                                        log_file.write("Protein ID = " + mRNA_id + " is not started/ended with start/stop codon.\n");
                                     }
                                 }  
                             }
