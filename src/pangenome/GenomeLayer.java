@@ -1889,7 +1889,7 @@ public class GenomeLayer {
         try {
             BufferedReader in = new BufferedReader(new FileReader(PATH_TO_THE_REGIONS_FILE));
             while (in.ready()) {
-                line = in.readLine().trim().trim();
+                line = in.readLine().trim();
                 if (line.equals("")) {
                     continue;
                 }
@@ -1910,7 +1910,7 @@ public class GenomeLayer {
                 out_file_name = PATH_TO_THE_PANGENOME_DATABASE + "/" + fields[fields.length - 1] + ".fasta";
                 BufferedWriter out = new BufferedWriter(new FileWriter(out_file_name));
                 for (c = 0; in.ready();) {
-                    line = in.readLine().trim().trim();
+                    line = in.readLine().trim();
                     if (line.equals("")) {
                         continue;
                     }
@@ -1989,7 +1989,7 @@ public class GenomeLayer {
             try {
                 in = new BufferedReader(new FileReader(PATH_TO_THE_GENOME_NUMBERS_FILE));
                 while (in.ready()) {
-                    genome_number = in.readLine().trim().trim();
+                    genome_number = in.readLine().trim();
                     if (genome_number.equals(""))
                         continue;
                     try{

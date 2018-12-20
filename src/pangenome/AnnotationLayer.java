@@ -487,7 +487,7 @@ public class AnnotationLayer {
                                             protein.setLength(0);
                                             protein.append(line.split("/translation=")[1].replaceAll("\"", ""));
                                             while (in.ready() && !line.endsWith("\"")){
-                                                line = in.readLine().trim().trim();
+                                                line = in.readLine().trim();
                                                 if (line.endsWith("\"")){
                                                     protein.append(line.replaceAll("\"", ""));
                                                     break;

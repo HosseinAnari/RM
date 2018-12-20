@@ -648,7 +648,7 @@ public class ProteomeLayer {
                         clusters_file = new BufferedReader(new FileReader(clusters_path));
                     // For each line of the MCL output    
                         while (clusters_file.ready()){
-                            line = clusters_file.readLine().trim().trim();
+                            line = clusters_file.readLine().trim();
                             if (line.equals("")) // if line is empty
                                 continue;
                             fields = line.split("\\s");
@@ -850,7 +850,7 @@ public class ProteomeLayer {
         startTime = System.currentTimeMillis();
         try(BufferedReader protein_paths = new BufferedReader(new FileReader(PATH_TO_THE_PROTEOMES_FILE))) {
             for (genome = 1; protein_paths.ready(); ++genome){
-                file_path = protein_paths.readLine().trim().trim();
+                file_path = protein_paths.readLine().trim();
                 if (file_path.equals("")) // if line is empty
                     continue;
                 fields = file_path.split("\\.");
@@ -859,14 +859,14 @@ public class ProteomeLayer {
                     BufferedReader in = new BufferedReader(new FileReader(file_path));
                 // skip lines till get to the first id line   
                     do{
-                        line = in.readLine().trim().trim();
+                        line = in.readLine().trim();
                     } while(line.equals(""));
                     protein_ID = line.substring(1);
                     ++num_proteins;
                     while (in.ready()) {
                         try (Transaction tx = graphDb.beginTx()) {
                             for (trsc = 0; in.ready() && trsc < MAX_TRANSACTION_SIZE; ++trsc){
-                                line = in.readLine().trim().trim();
+                                line = in.readLine().trim();
                                 if (line.equals("")) // if line is empty
                                     continue;
                                 else if (line.charAt(0) == '>'){
