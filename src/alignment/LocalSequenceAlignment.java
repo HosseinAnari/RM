@@ -28,6 +28,7 @@ public class LocalSequenceAlignment {
     private int deletions;
     private int insertions;
     private long similarity_score;
+    private double identity;
     private char TYPE;
     private int offset;
     private int range_len;
@@ -1108,11 +1109,11 @@ public class LocalSequenceAlignment {
     public long get_similarity_score(){
         return similarity_score;
     }
-
-    public double get_similarity_percentage(){
-        return (double)similarity_score * 20.0 / seq1.length();
-    }
     
+    public double get_identity(){
+       return identity;
+    }
+
     public int[] calculate_clip_range() {
         int i, j, x, max_ending_here, max_so_far, tmp_start, tmp_stop;
         int[] range = new int[4];
@@ -1173,7 +1174,7 @@ public class LocalSequenceAlignment {
     }
     
     public String get_cigar() {
-        int i, j, move_counts, count;
+        int i, j, move_counts, count, identicals = 0;
         int range[];
         char curr_move, prev_move, operation;
         insertions = deletions = 0;
@@ -1206,6 +1207,8 @@ public class LocalSequenceAlignment {
                 j = j - 1;
                 ++deletions;
             } else {
+                if (seq1.charAt(i) == seq2.charAt(j))
+                    ++identicals;
                 i = i - 1;
                 j = j - 1;
             } 
@@ -1220,6 +1223,7 @@ public class LocalSequenceAlignment {
             //System.out.println(i+" "+j+ " " +direction[i][j]);
         } 
         offset = j - i;
+        identity = identicals * 100.0 / range_len; 
         if (CLIPPING_STRIGENCY > 0){
             operation_stack.push(prev_move);
             count_stack.push(move_counts);

@@ -52,6 +52,7 @@ public class Pantools {
     public static String PATH_TO_THE_ANNOTATIONS_FILE;
     public static String PATH_TO_THE_REGIONS_FILE;
     public static String PATH_TO_THE_GENOME_NUMBERS_FILE;
+    public static String RAW_ABUNDANCE_FILE = "";
     public static String PATH_TO_THE_FIRST_SRA;
     public static String PATH_TO_THE_SECOND_SRA;
     public static String FEATURE = "gene";
@@ -66,7 +67,7 @@ public class Pantools {
     public static int K_SIZE = -1;
     public static int MAX_ALIGNMENT_LENGTH = 1000;
     public static int GAP_OPEN = -20;
-    public static int GAP_EXT = -1;
+    public static int GAP_EXT = -2;
     public static int ANCHORS_DISTANCE = 10000; // The distance between two anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
     public static int cores = Runtime.getRuntime().availableProcessors();
@@ -75,10 +76,10 @@ public class Pantools {
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
     
-    public static double MIN_MAPPING_SCORE = 50.0;
-    public static int NUM_KMER_SAMPLES = 10;
-    public static int MAX_NUM_LOCATIONS = 10;
-    public static int MIN_HIT_LENGTH = 20;
+    public static double MIN_IDENTITY = 50.0;
+    public static int NUM_KMER_SAMPLES = 15;
+    public static int MAX_NUM_LOCATIONS = 15;
+    public static int MIN_HIT_LENGTH = 15;
     public static int MAX_FRAGMENT_LENGTH = 5000;
     public static int ALIGNMENT_BOUND = 7;    
     public static int ALIGNMENT_MODE = 2; // 0: all-hits    
@@ -383,12 +384,12 @@ public class Pantools {
                     case "--min_mapping-score": case "-mms":
                         x = Integer.parseInt(args[i + 1]);
                         if (x >= 0 && x < 100)
-                           MIN_MAPPING_SCORE = x;
+                           MIN_IDENTITY = x;
                         else {
-                            System.out.println("Choose MIN_MAPPING_SCORE in the range [0..100[ or do not specify it to use the default value.");
+                            System.out.println("Choose MIN_IDENTITY in the range [0..100[ or do not specify it to use the default value.");
                             System.exit(1);
                         }
-                        System.out.println("MIN_MAPPING_SCORE = " + MIN_MAPPING_SCORE);
+                        System.out.println("MIN_IDENTITY = " + MIN_IDENTITY);
                         break;
                     case "--num-kmer-samples": case "-nks":
                         x = Integer.parseInt(args[i + 1]);
@@ -481,6 +482,15 @@ public class Pantools {
                                 System.out.println("Choose ALIGNMENT_MODE 0 for best or 1 for all-bests mode, or do not specify it to use the default value.");
                                 System.exit(1);
                         }
+                        break;
+                    case "--raw-abundance-file": case "-raf":
+                        RAW_ABUNDANCE_FILE = args[i + 1];
+                        theDir = new File(RAW_ABUNDANCE_FILE);
+                        if (!theDir.exists()) {
+                                System.out.println(RAW_ABUNDANCE_FILE + " does not exist!");
+                                System.exit(1);
+                        }
+                        System.out.println("RAW_ABUNDANCE_FILE = " + RAW_ABUNDANCE_FILE);
                         break;
                     case "--help": case "-h":
                         print_help_message();

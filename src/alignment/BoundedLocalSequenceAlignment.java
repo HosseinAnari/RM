@@ -21,6 +21,7 @@ public class BoundedLocalSequenceAlignment {
     private Stack<Character> operation_stack;
     private Stack<Integer> count_stack;
     private long similarity_score;
+    private double identity;
     private int GAP_OPEN;
     private int GAP_EXT;
     private int MAX_LENGTH;
@@ -1094,8 +1095,8 @@ public class BoundedLocalSequenceAlignment {
         return similarity_score;
     }
     
-    public double get_similarity_percentage(){
-        return (double)similarity_score * 20.0 / seq1.length();
+    public double get_identity(){
+        return identity;
     }
 
     public char get_direction(int i, int j){
@@ -1204,7 +1205,7 @@ public class BoundedLocalSequenceAlignment {
     }
     
     public String get_cigar() {
-        int i, j, move_counts, count;
+        int i, j, move_counts, count, identicals = 0;
         int range[];
         char curr_move, prev_move, operation;
         insertions = deletions = 0;
@@ -1236,6 +1237,8 @@ public class BoundedLocalSequenceAlignment {
                 j = j - 1;
                 ++deletions;
             } else {
+                if (seq1.charAt(i) == seq2.charAt(j))
+                    ++identicals;
                 i = i - 1;
                 j = j - 1;
             } 
@@ -1250,6 +1253,7 @@ public class BoundedLocalSequenceAlignment {
             //System.out.println(i+" "+j+ " " +direction[i][j]);
         } 
         offset = j - i;
+        identity = identicals * 100.0 / range_len; 
         if (CLIPPING_STRIGENCY > 0){
             operation_stack.push(prev_move);
             count_stack.push(move_counts);

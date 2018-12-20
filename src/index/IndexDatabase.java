@@ -82,23 +82,23 @@ public final class IndexDatabase {
      * @param index_path Path to the index database 
      */
     public IndexDatabase(String index_path, String index_name) {
-        int i, j, k, number_of_pages, record_size, page_size, full_page_size;
+        int i, j, number_of_pages, record_size, page_size, full_page_size;
         long number_of_prefixes;
         try {
             //System.out.println("Mounting index " + index_path);
             pre_file = new RandomAccessFile(index_path + index_name + PREFIX_FILE_EXTENTION, "r");
             BufferedReader in = new BufferedReader(new FileReader(index_path + index_name + INFORMATION_FILE_EXTENTION));
-            K = Integer.parseInt(in.readLine().split(":")[1]);
-            mode = Integer.parseInt(in.readLine().split(":")[1]);
-            ctr_size = Integer.parseInt(in.readLine().split(":")[1]);
-            pre_len = Integer.parseInt(in.readLine().split(":")[1]);
-            min_count = Integer.parseInt(in.readLine().split(":")[1]);
-            max_count = Integer.parseInt(in.readLine().split(":")[1]);
-            kmers_num = Long.valueOf(in.readLine().split(":")[1]);
-            suf_len = Integer.parseInt(in.readLine().split(":")[1]);
-            id_len = Integer.parseInt(in.readLine().split(":")[1]);
-            offset_len = Integer.parseInt(in.readLine().split(":")[1]);
-            POINTER_LENGTH = Integer.parseInt(in.readLine().split(":")[1]);
+            K = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            mode = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            ctr_size = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            pre_len = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            min_count = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            max_count = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            kmers_num = Long.valueOf(in.readLine().trim().split(":")[1]);
+            suf_len = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            id_len = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            offset_len = Integer.parseInt(in.readLine().trim().split(":")[1]);
+            POINTER_LENGTH = Integer.parseInt(in.readLine().trim().split(":")[1]);
             in.close();
             key=new kmer(K,pre_len);
             //System.out.println("Indexing " + kmers_num + " kmers...                    ");

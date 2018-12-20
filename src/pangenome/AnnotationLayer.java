@@ -185,7 +185,7 @@ public class AnnotationLayer {
             System.out.println("genome\tgenes\tmRNAs\ttRNAs\trRNAs");
             while (paths.ready()) // for each gff file
             {
-                line = paths.readLine();
+                line = paths.readLine().trim();
                 if (line.equals(""))
                     continue;
                 fields = line.split("\\s+");
@@ -261,7 +261,7 @@ public class AnnotationLayer {
             {
                 try (Transaction tx2 = graphDb.beginTx()) {
                     for (trsc = 0; trsc < MAX_TRANSACTION_SIZE && in.ready(); ++trsc) {
-                        line = in.readLine();
+                        line = in.readLine().trim();
                         if (line.equals("") || line.charAt(0) == '#') // if line is empty or a comment skip it
                             continue;
                         if (line.contains("\t")){
@@ -368,10 +368,10 @@ public class AnnotationLayer {
                                                     rna_node.setProperty("address", gene_node.getProperty("address"));
                                                     rna_node.setProperty("strand", gene_node.getProperty("strand"));
                                                     rna_node.setProperty("length", gene_node.getProperty("length"));
-                                                    rna_node.setProperty("id", gene_node.getProperty("id"));
-                                                    rna_node.setProperty("attribute", gene_node.getProperty("attribute"));
-                                                    rna_node.setProperty("type", gene_node.getProperty("type"));
-                                                    rna_node.setProperty("name", gene_node.getProperty("name"));
+                                                    rna_node.setProperty("id", ((String)gene_node.getProperty("id")).replaceAll("gene", "mRNA"));
+                                                    rna_node.setProperty("attribute", ((String)gene_node.getProperty("attribute")).replaceAll("gene", "mRNA"));
+                                                    rna_node.setProperty("type", "mRNA");
+                                                    rna_node.setProperty("name", ((String)gene_node.getProperty("name")).replaceAll("gene", "mRNA"));
                                                     rna_node.setProperty("annotation_id", annotation_id);
                                                     rna_node.setProperty("genome",address[0]);
                                                     ++num_mRNAs;
@@ -424,7 +424,7 @@ public class AnnotationLayer {
             while (in.ready()) {
                 try (Transaction tx2 = graphDb.beginTx()) {
                     for (trsc = 0; trsc < MAX_TRANSACTION_SIZE && in.ready(); ++trsc) {
-                        line = in.readLine();
+                        line = in.readLine().trim();
                         if (line.equals("") || line.charAt(0) == '#') // if line is empty or a comment skip it
                             continue;
                         if (line.startsWith("LOCUS")){
@@ -487,7 +487,7 @@ public class AnnotationLayer {
                                             protein.setLength(0);
                                             protein.append(line.split("/translation=")[1].replaceAll("\"", ""));
                                             while (in.ready() && !line.endsWith("\"")){
-                                                line = in.readLine().trim();
+                                                line = in.readLine().trim().trim();
                                                 if (line.endsWith("\"")){
                                                     protein.append(line.replaceAll("\"", ""));
                                                     break;
@@ -709,7 +709,7 @@ public class AnnotationLayer {
         try {
             in = new BufferedReader(new FileReader(PATH_TO_THE_GENOME_NUMBERS_FILE));
             while (in.ready()) {
-                line = in.readLine();
+                line = in.readLine().trim();
                 if (line.equals("")) {
                     continue;
                 }
@@ -732,7 +732,7 @@ public class AnnotationLayer {
                 in = new BufferedReader(new FileReader(PATH_TO_THE_GENOME_NUMBERS_FILE));
                 // fill all the records in an array to be sorted    
                 for (i = 0; in.ready();) {
-                    line = in.readLine();
+                    line = in.readLine().trim();
                     if (line.equals("")) {
                         continue;
                     }
