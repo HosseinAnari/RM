@@ -11,10 +11,10 @@ import java.util.Stack;
 public class LocalSequenceAlignment {
 
     private int match[][];
-    private long matrix[][];
+    private int matrix[][];
     private char direction[][];
-    private long up[][];
-    private long left[][];
+    private int up[][];
+    private int left[][];
     private StringBuilder seq1;
     private StringBuilder seq2;
     private StringBuilder cigar;
@@ -27,7 +27,7 @@ public class LocalSequenceAlignment {
     private int max_j;
     private int deletions;
     private int insertions;
-    private long similarity_score;
+    private int similarity;
     private double identity;
     private char TYPE;
     private int offset;
@@ -51,10 +51,10 @@ public class LocalSequenceAlignment {
         TYPE = type;
         cigar = new StringBuilder();
     // initialize matrixes
-        matrix = new long[MAX_LENGTH+1][MAX_LENGTH+1];
+        matrix = new int[MAX_LENGTH+1][MAX_LENGTH+1];
         direction = new char[MAX_LENGTH + 1][MAX_LENGTH + 1];
-        up = new long[MAX_LENGTH+1][MAX_LENGTH+1];
-        left = new long[MAX_LENGTH+1][MAX_LENGTH+1];
+        up = new int[MAX_LENGTH+1][MAX_LENGTH+1];
+        left = new int[MAX_LENGTH+1][MAX_LENGTH+1];
         score_array = new int[MAX_LENGTH];
         operation_stack = new Stack();
         count_stack = new Stack();
@@ -959,13 +959,12 @@ public class LocalSequenceAlignment {
      * @return The similarity score
      */
     public void align(StringBuilder s1, StringBuilder s2) {
-        int i, j;
+        int i, j, d;
         int m = s1.length(), n = s2.length();
-        long d, u, l;
         seq1 = s1;
         seq2 = s2;
         if(m < MAX_LENGTH){
-            similarity_score = Integer.MIN_VALUE;
+            similarity = Integer.MIN_VALUE;
             /*for (j = 1; j <= n; j++) 
                 System.out.print(String.format("%4c", seq2.charAt(j-1) ));
             System.out.println();*/
@@ -985,8 +984,8 @@ public class LocalSequenceAlignment {
                         matrix[i][j] = up[i][j];
                         direction[i][j] = 'I';
                     }
-                    if (matrix[i][j] > similarity_score){
-                        similarity_score = matrix[i][j];
+                    if (matrix[i][j] > similarity){
+                        similarity = matrix[i][j];
                         max_i = i;
                         max_j = j;
                     }                
@@ -1106,8 +1105,8 @@ public class LocalSequenceAlignment {
             return score * 100.0 / p_score;
         }   
 
-    public long get_similarity_score(){
-        return similarity_score;
+    public int get_similarity(){
+        return similarity;
     }
     
     public double get_identity(){
@@ -1195,9 +1194,17 @@ public class LocalSequenceAlignment {
             move_counts = range[1] < seq1.length() ? seq1.length() - range[1] + 1 : 1;
         }
         range_len = range[1] - range[0] + 1;
+        i = seq1.length();
+        j = range[3] + seq1.length() - range[1];
+        if (j > seq2.length()){
+            i -= j - seq2.length();
+            j -= j - seq2.length();
+        }
+        for (; i >= range[1]; --i, --j)
+             if (seq1.charAt(i-1) == seq2.charAt(j-1))
+                identicals++;
         i = range[1] - 1;
         j = range[3] - 1;
-        offset = 0;
         while (i >= range[0]){
             curr_move = direction[i][j];
             if (curr_move == 'I'){
@@ -1223,7 +1230,10 @@ public class LocalSequenceAlignment {
             //System.out.println(i+" "+j+ " " +direction[i][j]);
         } 
         offset = j - i;
-        identity = identicals * 100.0 / range_len; 
+        for (; i > 0 && j > 0; --i, --j)
+             if (seq1.charAt(i-1) == seq2.charAt(j-1))
+                identicals++;
+        identity = ((double)identicals) / seq1.length(); 
         if (CLIPPING_STRIGENCY > 0){
             operation_stack.push(prev_move);
             count_stack.push(move_counts);

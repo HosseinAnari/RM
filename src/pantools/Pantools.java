@@ -8,9 +8,12 @@
 package pantools;
 
 import index.IndexDatabase;
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
@@ -19,6 +22,8 @@ import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.compress.compressors.CompressorInputStream;
+import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
@@ -76,12 +81,12 @@ public class Pantools {
     public static boolean SHOW_KMERS;
     public static int THREADS = 1;
     
-    public static double MIN_IDENTITY = 50.0;
-    public static int NUM_KMER_SAMPLES = 15;
+    public static double MIN_IDENTITY = 0.5;
+    public static int NUM_KMER_SAMPLES = 10;
     public static int MAX_NUM_LOCATIONS = 15;
-    public static int MIN_HIT_LENGTH = 15;
+    public static int MIN_HIT_LENGTH = 13;
     public static int MAX_FRAGMENT_LENGTH = 5000;
-    public static int ALIGNMENT_BOUND = 7;    
+    public static int ALIGNMENT_BOUND = 3;    
     public static int ALIGNMENT_MODE = 2; // 0: all-hits    
                                           // -1: pan-genomic unique_best
                                           // -2: pan-genomic one_best
@@ -89,7 +94,7 @@ public class Pantools {
                                           // 1: genomic unique_best
                                           // 2: genomic one_best
                                           // 3: genomic all_bests
-    public static int CLIPPING_STRINGENCY = 0; // 0: no-clipping
+    public static int CLIPPING_STRINGENCY = 1; // 0: no-clipping
                                                // 1: low
                                                // 2: medium
                                                // 3: high    
@@ -128,6 +133,10 @@ public class Pantools {
         varies
     }
 
+    public static char[] sym = new char[]{'A', 'C', 'G', 'T', 'M', 'R', 'W', 'S', 'Y', 'K', 'V', 'H', 'D', 'B', 'N'};
+    public static int[] complement = new int[]{3, 2, 1, 0, 9, 8, 6, 7, 5, 4, 13, 12, 11, 10, 14};
+    public static int[] binary = new int[256];
+   
     public static long startTime;
     public static long phaseTime;
     public static long num_nodes;
@@ -154,6 +163,21 @@ public class Pantools {
             print_help_message();
             System.exit(1);
         }
+        binary['A'] = 0;
+        binary['C'] = 1;
+        binary['G'] = 2;
+        binary['T'] = 3;
+        binary['M'] = 4;
+        binary['R'] = 5;
+        binary['W'] = 6;
+        binary['S'] = 7;
+        binary['Y'] = 8;
+        binary['K'] = 9;
+        binary['V'] = 10;
+        binary['H'] = 11;
+        binary['D'] = 12;
+        binary['B'] = 13;
+        binary['N'] = 14; 
         seqLayer = new GenomeLayer();
         annLayer = new AnnotationLayer();
         proLayer = new ProteomeLayer();
@@ -461,25 +485,22 @@ public class Pantools {
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : unique pangenomic-best");
                             break;
                             case -2:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : selected pangenomic-best");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : one pangenomic-best");
                             break;
                             case -3:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : random pangenomic-bests");
-                            break;
-                            case -4:
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : all pangenomic-bests");
                             break;
                             case 1:
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : unique genomic-best");
                             break;
                             case 2:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : random genomic-best");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : one genomic-best");
                             break;
                             case 3:
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : all genomic-bests");
                             break;
                             default:    
-                                System.out.println("Choose ALIGNMENT_MODE 0 for best or 1 for all-bests mode, or do not specify it to use the default value.");
+                                System.out.println("Choose ALIGNMENT_MODE in range [-3..3] or leave it to use the default value.");
                                 System.exit(1);
                         }
                         break;
@@ -845,7 +866,7 @@ public class Pantools {
     public static void reverse_complement(StringBuilder s) {
         char ch;
         int i, j;
-        for ( i=0, j = s.length() - 1; i < j; ++i, --j) {
+        for (i = 0, j = s.length() - 1; i < j; ++i, --j) {
             ch = s.charAt(i);
             s.setCharAt(i, complement(s.charAt(j)));
             s.setCharAt(j, complement(ch));
@@ -918,4 +939,86 @@ public class Pantools {
         }
         return success;
     }
+    
+    public static boolean is_fasta(String file_name){
+        try{
+            BufferedReader in = open_file(file_name);
+            String line;
+            while ((line = in.readLine()) != null){
+                if (line.equals("")) 
+                    continue;
+                else {
+                    in.close();
+                    return line.charAt(0) == '>';
+                }            
+            }
+        } catch (IOException ex){
+            System.err.println(ex.getMessage());
+        }
+        return false;
+    }
+
+    public static boolean is_fastq(String file_name){
+        try{
+            BufferedReader in = open_file(file_name);
+            String line;
+            while ((line = in.readLine()) != null){
+                if (line.equals("")) 
+                    continue;
+                else {
+                    in.close();
+                    return line.charAt(0) == '@';
+                }
+            }
+        } catch (IOException ex){
+            System.err.println(ex.getMessage());
+        }
+        return false;
+    }
+    
+    public static BufferedReader open_file(String filename){
+        try{        
+            String[] fields = filename.split("\\.");
+            String file_type = fields[fields.length - 1].toLowerCase();
+            if (file_type.equals("gz") || file_type.equals("gzip") || file_type.equals("bz2") || file_type.equals("bzip2"))
+                return getBufferedReaderForCompressedFile(filename);//BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(filename)), "UTF-8"));                    
+            else 
+                return new BufferedReader(new BufferedReader(new FileReader(filename)));                    
+        } catch (IOException ex){
+            System.out.println(ex.getMessage());
+            return null;
+        }
+    }
+    
+    public static int get_lines_count(String file_name, boolean skip_empty){
+        int count = 0;
+        try{
+            BufferedReader in = open_file(file_name);
+            String line;
+            while ((line = in.readLine()) != null){
+                if (skip_empty && line.equals("")) 
+                    continue;
+                ++count;
+            }
+            in.close();
+        } catch (IOException ex){
+            System.err.println(ex.getMessage());
+        }
+        return count;
+    }
+    
+    public static BufferedReader getBufferedReaderForCompressedFile(String fileIn){
+        try{
+            FileInputStream fin = new FileInputStream(fileIn);
+            BufferedInputStream bis = new BufferedInputStream(fin);
+            CompressorInputStream input = new CompressorStreamFactory().createCompressorInputStream(bis);
+            BufferedReader br2 = new BufferedReader(new InputStreamReader(input));
+            return br2;
+        } catch (Exception ex){
+            System.err.println(ex.getMessage() + "\nFailed to open the compresse file!");
+            return null;
+        }
+    }    
+
+
 }

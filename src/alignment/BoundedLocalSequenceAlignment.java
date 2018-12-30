@@ -11,16 +11,16 @@ import java.util.Stack;
 public class BoundedLocalSequenceAlignment {
 
     private int match[][];
-    private long matrix[][];
+    private int matrix[][];
     private char direction[][];
-    private long up[][];
-    private long left[][];
+    private int up[][];
+    private int left[][];
     private StringBuilder seq1;
     private StringBuilder seq2;
     private StringBuilder cigar;
     private Stack<Character> operation_stack;
     private Stack<Integer> count_stack;
-    private long similarity_score;
+    private int similarity;
     private double identity;
     private int GAP_OPEN;
     private int GAP_EXT;
@@ -53,10 +53,10 @@ public class BoundedLocalSequenceAlignment {
         CLIPPING_STRIGENCY = c;
         cigar = new StringBuilder();
     // initialize matrixes
-        matrix = new long[MAX_LENGTH + 1][2 * BOUND + 3];
+        matrix = new int[MAX_LENGTH + 1][2 * BOUND + 3];
         direction = new char[MAX_LENGTH + 1][2 * BOUND + 3];
-        up = new long[MAX_LENGTH + 1][2 * BOUND + 3];
-        left = new long[MAX_LENGTH + 1][2 * BOUND + 3];
+        up = new int[MAX_LENGTH + 1][2 * BOUND + 3];
+        left = new int[MAX_LENGTH + 1][2 * BOUND + 3];
         score_array = new int[MAX_LENGTH];
         operation_stack = new Stack();
         count_stack = new Stack();
@@ -968,14 +968,13 @@ public class BoundedLocalSequenceAlignment {
      */
     public void align(StringBuilder s1, StringBuilder s2) {
         int i, j, stop;
-        int m, n;
-        long d;
+        int m, n, d;
         seq1 = s1;
         seq2 = s2;
         m = seq1.length();
         n = seq2.length();
         if (m < MAX_LENGTH){
-            similarity_score = Integer.MIN_VALUE;
+            similarity = Integer.MIN_VALUE;
             for (i = 1; i <= m; i++) {
                 //System.out.print(seq1.charAt(i-1));
                 stop = 2 * BOUND + 1;
@@ -993,9 +992,9 @@ public class BoundedLocalSequenceAlignment {
                         matrix[i][j] = up[i][j];
                         direction[i][j] = 'I';
                     }
-                    if (matrix[i][j] > similarity_score){
-                        //System.out.println(matrix[i][j] + " " + similarity_score + " " + i + " " + (j+i-2));
-                        similarity_score = matrix[i][j];
+                    if (matrix[i][j] > similarity){
+                        //System.out.println(matrix[i][j] + " " + similarity + " " + i + " " + (j+i-2));
+                        similarity = matrix[i][j];
                         max_i = i;
                         max_j = j;
                     }
@@ -1091,14 +1090,15 @@ public class BoundedLocalSequenceAlignment {
         return num_matches;
     }
    
-    public long get_similarity_score(){
-        return similarity_score;
+    public int get_similarity(){
+        return similarity;
     }
     
     public double get_identity(){
         return identity;
     }
-
+ 
+    
     public char get_direction(int i, int j){
         return direction[i][j+1-i];
     }
@@ -1226,6 +1226,15 @@ public class BoundedLocalSequenceAlignment {
             move_counts = range[1] < seq1.length() ? seq1.length() - range[1] + 1 : 1;
         }
         range_len = range[1] - range[0] + 1;
+        i = seq1.length();
+        j = range[3] + seq1.length() - range[1];
+        if (j > seq2.length()){
+            i -= j - seq2.length();
+            j -= j - seq2.length();
+        }
+        for (; i >= range[1]; --i, --j)
+             if (seq1.charAt(i-1) == seq2.charAt(j-1))
+                identicals++;
         i = range[1] - 1;
         j = range[3] - 1;
         while (i >= range[0]){
@@ -1253,7 +1262,10 @@ public class BoundedLocalSequenceAlignment {
             //System.out.println(i+" "+j+ " " +direction[i][j]);
         } 
         offset = j - i;
-        identity = identicals * 100.0 / range_len; 
+        for (; i > 0 && j > 0; --i, --j)
+             if (seq1.charAt(i-1) == seq2.charAt(j-1))
+                identicals++;
+        identity = ((double)identicals) / seq1.length(); 
         if (CLIPPING_STRIGENCY > 0){
             operation_stack.push(prev_move);
             count_stack.push(move_counts);

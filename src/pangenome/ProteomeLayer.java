@@ -456,7 +456,7 @@ public class ProteomeLayer {
                     query.append(p1.substring(i * part_len1, Math.min(m, (i + 1) * part_len1)));
                     subject.append(p2.substring(i * part_len2, Math.min(n, (i + 1) * part_len2)));
                     aligner.align(query, subject);
-                    score += aligner.get_similarity_score();
+                    score += aligner.get_similarity();
                     p_score += aligner.get_match_score(query, query);//5 * query.length();
                 }
             } else {
@@ -465,7 +465,7 @@ public class ProteomeLayer {
                 query.append(p1);
                 subject.append(p2);
                 aligner.align(query, subject);
-                score = aligner.get_similarity_score();
+                score = aligner.get_similarity();
                 p_score = aligner.get_match_score(query, query);//5 * query.length();
             }
             return score * 100.0 / p_score;

@@ -28,7 +28,11 @@ import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
+import static pantools.Pantools.binary;
 import static pantools.Pantools.genome_label;
+import static pantools.Pantools.open_file;
+import static pantools.Pantools.is_fasta;
+import static pantools.Pantools.is_fastq;
 import static pantools.Pantools.labels;
 import static pantools.Pantools.pangenome_label;
 import static pantools.Pantools.sequence_label;
@@ -56,37 +60,7 @@ public class SequenceDatabase {
     private RandomAccessFile genomes_file;
     public MappedByteBuffer[] genomes_buff;
     public int MAX_BYTE_COUNT = 1 << 24;// 16 MB 
-    public char sym[];
-    public int[] binary;
-    public int[] complement;
     private String db_path;
-
-    /**
-     * Initialize sym, binary and complement arrays.
-     * sym: All the nucleotide IUPAC symbols.
-     * binary: The binary code for IUPAC symbols.
-     * complement: The binary code for the complement of every binary code 
-     */
-    public void initalize() {
-        sym = new char[]{'A', 'C', 'G', 'T', 'M', 'R', 'W', 'S', 'Y', 'K', 'V', 'H', 'D', 'B', 'N'};
-        complement = new int[]{3, 2, 1, 0, 9, 8, 6, 7, 5, 4, 13, 12, 11, 10, 14};
-        binary = new int[256];
-        binary['A'] = 0;
-        binary['C'] = 1;
-        binary['G'] = 2;
-        binary['T'] = 3;
-        binary['M'] = 4;
-        binary['R'] = 5;
-        binary['W'] = 6;
-        binary['S'] = 7;
-        binary['Y'] = 8;
-        binary['K'] = 9;
-        binary['V'] = 10;
-        binary['H'] = 11;
-        binary['D'] = 12;
-        binary['B'] = 13;
-        binary['N'] = 14;
-    }
 
     /**
      * Mounts the genome database to the database object.
@@ -97,7 +71,6 @@ public class SequenceDatabase {
         String[] fields;
         BufferedReader in;
         db_path = path;
-        initalize();
         try {
             in = new BufferedReader(new FileReader(path + INFO_FILE));
             number_of_bytes = Long.valueOf(in.readLine().trim().split(":")[1]);
@@ -159,7 +132,6 @@ public class SequenceDatabase {
         String line;
         List<String> genome_list = new LinkedList();
         db_path = path;
-        initalize();
         num_genomes = 0;
         new File(path).mkdir();
         number_of_bytes = 0;
@@ -241,7 +213,6 @@ public class SequenceDatabase {
         int i, number_of_pages, g, s, page_size;
         db_path = path;
         number_of_bytes = 0;
-        initalize();
         try (Transaction tx = graphDb.beginTx()) {
             db_node = graphDb.findNodes(pangenome_label).next();
             num_genomes = (int) db_node.getProperty("num_genomes");
@@ -309,10 +280,9 @@ public class SequenceDatabase {
         int i, j, g, s, len, number_of_pages, page_size;
         BufferedReader in;
         byte_number = previous_num_genomes == 0 ? 0 : number_of_bytes;
-        initalize();
         try {
             for (g = previous_num_genomes + 1; g <= num_genomes; ++g) {
-                System.out.println("Reading " + genome_names[g] + " ...");
+            System.out.println("Checking " + genome_names[g] + " ...");
                 if (is_fasta(genome_names[g])){
                     in = open_file(genome_names[g]);
                     s = 0;
@@ -342,7 +312,7 @@ public class SequenceDatabase {
                         ++size;
                     }
                     in.close();
-                }else if (is_fastq(genome_names[g])){
+                } else if (is_fastq(genome_names[g])){
                     in = open_file(genome_names[g]);
                     sequence_offset[g][0] = 0;
                     sequence_length[g][0] = 0;
@@ -392,6 +362,7 @@ public class SequenceDatabase {
             }
             genomes_buff[(int) (byte_number / MAX_BYTE_COUNT)].position((int) (byte_number % MAX_BYTE_COUNT));
             for (g = previous_num_genomes + 1; g <= num_genomes; ++g) {
+                System.out.println("Reading " + genome_names[g] + " ...");
                 if (is_fasta(genome_names[g])){
                     in = open_file(genome_names[g]);
                     carry = ' ';
@@ -477,69 +448,6 @@ public class SequenceDatabase {
         }
     }
 
-    public boolean is_fasta(String file_name){
-        try{
-            BufferedReader in = open_file(file_name);
-            String line;
-            while ((line = in.readLine()) != null){
-                if (line.equals("")) 
-                    continue;
-                else {
-                    in.close();
-                    return line.charAt(0) == '>';
-                }            
-            }
-        } catch (IOException ex){
-            System.err.println(ex.getMessage());
-        }
-        return false;
-    }
-
-    public boolean is_fastq(String file_name){
-        try{
-            BufferedReader in = open_file(file_name);
-            String line;
-            while ((line = in.readLine()) != null){
-                if (line.equals("")) 
-                    continue;
-                else {
-                    in.close();
-                    return line.charAt(0) == '@';
-                }
-            }
-        } catch (IOException ex){
-            System.err.println(ex.getMessage());
-        }
-        return false;
-    }
-    
-    private BufferedReader open_file(String filename){
-        try{        
-            String[] fields = filename.split("\\.");
-            String file_type = fields[fields.length - 1].toLowerCase();
-            if (file_type.equals("gz") || file_type.equals("gzip") || file_type.equals("bz2") || file_type.equals("bzip2"))
-                return getBufferedReaderForCompressedFile(filename);//BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(filename)), "UTF-8"));                    
-            else 
-                return new BufferedReader(new BufferedReader(new FileReader(filename)));                    
-        } catch (IOException ex){
-            System.out.println(ex.getMessage());
-            return null;
-        }
-    }
-    
-    public static BufferedReader getBufferedReaderForCompressedFile(String fileIn){
-        try{
-            FileInputStream fin = new FileInputStream(fileIn);
-            BufferedInputStream bis = new BufferedInputStream(fin);
-            CompressorInputStream input = new CompressorStreamFactory().createCompressorInputStream(bis);
-            BufferedReader br2 = new BufferedReader(new InputStreamReader(input));
-            return br2;
-        } catch (Exception ex){
-            System.err.println(ex.getMessage() + "\nFailed to open the compresse file!");
-            return null;
-        }
-    }    
-
     /**
      * Adds new genomes to the genome database.
      * 
@@ -552,7 +460,6 @@ public class SequenceDatabase {
         String line;
         String[] fields;
         List<String> genome_list = new LinkedList();
-        initalize();
         try {
             // count number of new genomes
             in = new BufferedReader(new FileReader(genome_paths_file));
