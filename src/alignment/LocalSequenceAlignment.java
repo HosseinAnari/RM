@@ -1230,10 +1230,6 @@ public class LocalSequenceAlignment {
             //System.out.println(i+" "+j+ " " +direction[i][j]);
         } 
         offset = j - i;
-        for (; i > 0 && j > 0; --i, --j)
-             if (seq1.charAt(i-1) == seq2.charAt(j-1))
-                identicals++;
-        identity = ((double)identicals) / seq1.length(); 
         if (CLIPPING_STRIGENCY > 0){
             operation_stack.push(prev_move);
             count_stack.push(move_counts);
@@ -1253,6 +1249,10 @@ public class LocalSequenceAlignment {
             count = count_stack.pop();
             cigar.append(count).append(operation);
         }
+        for (; i > 0 && j > 0; --i, --j)
+             if (seq1.charAt(i-1) == seq2.charAt(j-1))
+                identicals++;
+        identity = ((double)identicals) / seq1.length(); 
         return cigar.toString();
     }
     

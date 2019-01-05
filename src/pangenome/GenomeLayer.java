@@ -62,6 +62,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -97,6 +98,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import static pantools.Pantools.ALIGNMENT_BOUND;
 import static pantools.Pantools.ALIGNMENT_MODE;
+import static pantools.Pantools.INTERLEAVED;
 import static pantools.Pantools.NUM_KMER_SAMPLES;
 import static pantools.Pantools.MAX_ALIGNMENT_LENGTH;
 import static pantools.Pantools.MAX_FRAGMENT_LENGTH;
@@ -193,8 +195,8 @@ public class GenomeLayer {
             length = h.length;
             deletions = h.deletions;
             forward = h.forward;
-            cigar = h.cigar.toString();
-            reference = h.reference.toString();
+            cigar = h.cigar;
+            reference = h.reference;
         }
         
         public single_hit(){
@@ -219,128 +221,84 @@ public class GenomeLayer {
 
     public class paired_hit{
         public int fragment_length;
-        
-        public int genome1;
-        public int sequence1;
-        public double identity1;
-        public int score1;
-        public int start1;
-        public int offset1;
-        public int length1;
-        public int deletions1;
-        public boolean forward1;
-        public String cigar1;
-        public String reference1;
-
-        public int genome2;
-        public int sequence2;
-        public double identity2;
-        public int score2;
-        public int start2;
-        public int offset2;
-        public int length2;
-        public int deletions2;
-        public boolean forward2;
-        public String cigar2;
-        public String reference2;
-        
+        public single_hit h1;
+        public single_hit h2;
         public paired_hit(int flen, int gn1, int sq1, double idn1, int sc1, int st1, int off1, int len1, int del1, boolean fw1, String cg1, String r1,
                           int gn2, int sq2, double idn2, int sc2, int st2, int off2, int len2, int del2, boolean fw2, String cg2, String r2){
             fragment_length = flen;
-            genome1 = gn1;
-            sequence1 = sq1;
-            identity1 = idn1;
-            score1 = sc1;
-            start1 = st1;
-            offset1 = off1;
-            length1 = len1;
-            deletions1 = del1;
-            forward1 = fw1;
-            cigar1 = cg1;
-            reference1 = r1;
+            h1.genome = gn1;
+            h1.sequence = sq1;
+            h1.identity = idn1;
+            h1.score = sc1;
+            h1.start = st1;
+            h1.offset = off1;
+            h1.length = len1;
+            h1.deletions = del1;
+            h1.forward = fw1;
+            h1.cigar = cg1;
+            h1.reference = r1;
 
-            genome2 = gn2;
-            sequence2 = sq2;
-            identity2 = idn2;
-            score2 = sc2;
-            start2 = st2;
-            offset2 = off2;
-            length2 = len2;
-            deletions2 = del2;
-            forward2 = fw2;
-            cigar2 = cg2;
-            reference2 = r2;
+            h1.genome = gn2;
+            h1.sequence = sq2;
+            h1.identity = idn2;
+            h1.score = sc2;
+            h1.start = st2;
+            h1.offset = off2;
+            h1.length = len2;
+            h1.deletions = del2;
+            h1.forward = fw2;
+            h1.cigar = cg2;
+            h1.reference = r2;
         }
 
-        public paired_hit(paired_hit h){
-            fragment_length = h.fragment_length;
-            genome1 = h.genome1;
-            sequence1 = h.sequence1;
-            identity1 = h.identity1;
-            score1 = h.score1;
-            start1 = h.start1;
-            offset1 = h.offset1;
-            length1 = h.length1;
-            deletions1 = h.deletions1;
-            forward1 = h.forward1;
-            cigar1 = h.cigar1.toString();
-            reference1 = h.reference1.toString();
-
-            genome2 = h.genome2;
-            sequence2 = h.sequence2;
-            identity2 = h.identity2;
-            score2 = h.score2;
-            start2 = h.start2;
-            offset2 = h.offset2;
-            length2 = h.length2;
-            deletions2 = h.deletions2;
-            forward2 = h.forward2;
-            cigar2 = h.cigar2.toString();
-            reference2 = h.reference2.toString();
+        public paired_hit(int f_len, single_hit hit1, single_hit hit2){
+            fragment_length = f_len;
+            h1 = hit1;
+            h2 = hit2;
         }
         
 
         public double get_identity(){
-            return identity1 + identity2;
+            return h1.identity + h2.identity;
         }
 
         public int get_score(){
-            return score1 + score2;
+            return h1.score + h2.score;
         }
 
         public int get_min_start(){
-            return Math.min(start1, start2);
+            return Math.min(h1.start, h2.start);
         }
 
         public int get_max_start(){
-            return Math.max(start1, start2);
+            return Math.max(h1.start, h2.start);
         }
 
         @Override
         public String toString(){
-            return "(genome1:" + genome1 + 
-                    ",sequence1:" + sequence1 + 
-                    ",identity1:" + identity1 + 
-                    ",score1:" + score1 + 
-                    ",start1:" + start1 + 
-                    ",offset1:" + offset1 + 
-                    ",length1:" + length1 + 
-                    ",deletions1:" + deletions1 + 
-                    ",forward1:" + forward1 + 
-                    ",reference1:" + reference1 + 
-                    ",cigar1:" + cigar1 +")" +
+            return "(genome1:" + h1.genome + 
+                    ",sequence1:" + h1.sequence + 
+                    ",identity1:" + h1.identity + 
+                    ",score1:" + h1.score + 
+                    ",start1:" + h1.start + 
+                    ",offset1:" + h1.offset + 
+                    ",length1:" + h1.length + 
+                    ",deletions1:" + h1.deletions + 
+                    ",forward1:" + h1.forward + 
+                    ",reference1:" + h1.reference + 
+                    ",cigar1:" + h1.cigar +")" +
                     "\n" +
-                    "(genome2:" + genome2 + 
-                    ",sequence2:" + sequence2 + 
-                    ",identity2:" + identity2 + 
-                    ",score2:" + score2 + 
-                    ",start2:" + start2 + 
-                    ",offset2:" + offset2 + 
-                    ",length2:" + length2 + 
-                    ",deletions2:" + deletions2 + 
-                    ",forward2:" + forward2 + 
-                    ",reference2:" + reference2 + 
-                    ",cigar2:" + cigar2 +")";
+                    "(genome2:" + h2.genome + 
+                    ",sequence2:" + h2.sequence + 
+                    ",identity2:" + h2.identity + 
+                    ",score2:" + h2.score + 
+                    ",start2:" + h2.start + 
+                    ",offset2:" + h2.offset + 
+                    ",length2:" + h2.length + 
+                    ",deletions2:" + h2.deletions + 
+                    ",forward2:" + h2.forward + 
+                    ",reference2:" + h2.reference + 
+                    ",cigar2:" + h2.cigar +")";
         }
     }
 
@@ -353,6 +311,14 @@ public class GenomeLayer {
             if (x.score > y.score) 
                 return -1;
             else if (x.score < y.score) 
+                return 1;
+            else if (x.sequence > y.sequence) 
+                return -1;
+            else if (x.sequence < y.sequence) 
+                return 1;
+            else if (x.start > y.start) 
+                return -1;
+            else if (x.start < y.start) 
                 return 1;
             else 
                 return 0;
@@ -407,14 +373,18 @@ public class GenomeLayer {
             long counter;
             FastqReader[] reader = new FastqReader[2];
             reader[0] = new FastqReader(new File(PATH_TO_THE_FIRST_SRA), true);
-            if (paired)
+            if (paired && !INTERLEAVED)
                 reader[1] = new FastqReader(new File(PATH_TO_THE_SECOND_SRA), true);
             try {
                 for (counter = 0; reader[0].hasNext();++counter){
                         t = (int)(counter % THREADS);
                         fastq_records[t][0].put(reader[0].next());
-                        if (paired)
-                            fastq_records[t][1].put(reader[1].next());
+                        if (paired){ 
+                            if(INTERLEAVED)
+                                fastq_records[t][1].put(reader[0].next());
+                            else
+                                fastq_records[t][1].put(reader[1].next());
+                        }
                         if (counter % 1000 == 0)
                             System.out.print("\rReads: " + counter);
                 }
@@ -441,11 +411,11 @@ public class GenomeLayer {
         IntComparator intcomp = new IntComparator();
         IndexPointer pointer;
         StringBuilder reference;
-        LinkedList<Integer>[][] sequences;
+        HashSet<Integer>[][] sequences;
         BoundedLocalSequenceAlignment bounded_aligner;
         LocalSequenceAlignment aligner;
         PriorityQueue<single_hit>[][] hits;
-        LinkedList<single_hit>[][] alignments;
+        LinkedList<single_hit>[] alignments;
         PriorityQueue<single_hit> single_hits;
         Queue<single_hit> single_hits_2;
         PriorityQueue<paired_hit> paired_hits;
@@ -457,10 +427,9 @@ public class GenomeLayer {
         int num_kmers = 0;
         int num_found = 0;
         int[] address = new int[3];
-        //int num_segments;
         ArrayList<Integer> genome_numbers;
         SAMFileWriter[] sam_writers;
-        SAMFileHeader[] sam_headers;
+        //SAMFileHeader[] sam_headers;
         long[] genome_sizes;
         int[] shared;
         int[] unique;
@@ -476,6 +445,7 @@ public class GenomeLayer {
         single_hitComparator shc = new single_hitComparator();
         StringBuilder[] forward_read;
         StringBuilder[] reverse_read;
+        StringBuilder[] quality;
         kmer current_kmer; 
         int[] read_len;
         String[] read_name;
@@ -483,7 +453,7 @@ public class GenomeLayer {
         int num_alns = 0;
         single_hit alignment_result;
         
-        public Map(int id, ArrayList<Integer> gn, boolean paired, SAMFileWriter[] sams, SAMFileHeader[] headers) {
+        public Map(int id, ArrayList<Integer> gn, boolean paired, SAMFileWriter[] sams) {
             int i, j, genome, abun;
             index_database = new IndexDatabase(PATH_TO_THE_PANGENOME_DATABASE + INDEX_DATABASE_PATH, "sorted");
             genome_database = new SequenceDatabase(PATH_TO_THE_PANGENOME_DATABASE + GENOME_DATABASE_PATH);
@@ -495,31 +465,32 @@ public class GenomeLayer {
             sequence_titles = new String[num_genomes + 1][];
             genome_scanner = new SequenceScanner(genome_database, 1, 1, K, index_database.get_pre_len());
             sam_writers = sams;
-            sam_headers = headers;
             thread_id = id;
             genome_numbers = gn;
             genome_numbers.sort(intcomp);
             paired_end = paired; 
             alignment_result = new single_hit();
             hits = new PriorityQueue[2][];
-            alignments = new LinkedList[2][];
-            sequences = new LinkedList[2][];
+            alignments = new LinkedList[2];
+            sequences = new HashSet[2][];
             locations = new ArrayList[2][][];
             reads = new FastqRecord[2];
+            quality = new StringBuilder[2];
             forward_read = new StringBuilder[2];
             reverse_read = new StringBuilder[2];
             read_len = new int[2];
             read_name = new String[2];
             
+            quality[0] = new StringBuilder();
             forward_read[0] = new StringBuilder();
             reverse_read[0] = new StringBuilder();
             hits[0] = new PriorityQueue[num_genomes + 1];
-            alignments[0] = new LinkedList[num_genomes + 1];
+            alignments[0] = new LinkedList();
             single_hits = new PriorityQueue(shc);
             single_hits_2 = new LinkedList();
             paired_hits = new PriorityQueue(phc);
             paired_hits_2 = new LinkedList();
-            sequences[0] = new LinkedList[num_genomes + 1];
+            sequences[0] = new HashSet[num_genomes + 1];
             locations[0] = new ArrayList[num_genomes + 1][];
             genome_sizes = new long[num_genomes + 1];
             shared = new int[num_genomes + 1];
@@ -528,7 +499,6 @@ public class GenomeLayer {
             raw_abundance = new double[num_genomes + 1];
             for (i = 0; i <= num_genomes; ++ i){
                 hits[0][i] = null;
-                alignments[0][i] = null;
                 locations[0][i] = null;
                 sequences[0][i] = null;
                 genome_sizes[i] = genome_database.genome_length[i];
@@ -540,36 +510,35 @@ public class GenomeLayer {
             for (i = 0; i < genome_numbers.size(); ++i){
                 genome = genome_numbers.get(i);
                 hits[0][genome] = new PriorityQueue(shc);
-                alignments[0][genome] = new LinkedList();
                 locations[0][genome] = new ArrayList[num_sequences[genome] + 1];
                 for (j = 1; j <= num_sequences[genome]; ++j){
                     locations[0][genome][j] = new ArrayList();
                     sequence_length[genome][j] = genome_database.sequence_length[genome][j];
                     sequence_titles[genome][j] = genome_database.sequence_titles[genome][j];
                 }
-                sequences[0][genome] = new LinkedList();
+                sequences[0][genome] = new HashSet();
             }
             if (paired_end){
+                quality[1] = new StringBuilder();
                 forward_read[1] = new StringBuilder();
                 reverse_read[1] = new StringBuilder();
                 hits[1] = new PriorityQueue[num_genomes + 1];
-                alignments[1] = new LinkedList[num_genomes + 1];
-                sequences[1] = new LinkedList[num_genomes + 1];
+                alignments[1] = new LinkedList();
+                sequences[1] = new HashSet[num_genomes + 1];
                 locations[1] = new ArrayList[num_genomes + 1][];
                 for (i = 0; i <= num_genomes; ++ i){
                     hits[1][i] = null;
-                    alignments[1][i] = null;
                     locations[1][i] = null;
                     sequences[1][i] = null;
                 }
                 for (i = 0; i < genome_numbers.size(); ++i){
                     genome = genome_numbers.get(i);
                     hits[1][genome] = new PriorityQueue(shc);
-                    alignments[1][genome] = new LinkedList();
                     locations[1][genome] = new ArrayList[num_sequences[genome] + 1];
-                    for (j = 1; j <= num_sequences[genome]; ++j)
+                    for (j = 1; j <= num_sequences[genome]; ++j){
                         locations[1][genome][j] = new ArrayList();
-                    sequences[1][genome] = new LinkedList();
+                    }
+                    sequences[1][genome] = new HashSet();
                 }
             }
             pointer = new IndexPointer();
@@ -607,26 +576,22 @@ public class GenomeLayer {
 
         @Override
         public void run() {
-            int i, genome, trsc = 0;
+            int i, genome;
             try{
                 reads[0] = fastq_records[thread_id][0].take();
                 if (paired_end)
                     reads[1] = fastq_records[thread_id][1].take();
-                while (reads[0].getReadLength() != 0) {
-                    ++trsc;
-                    try(Transaction tx = graphDb.beginTx()){
-                        for (trsc = 1; trsc <= 100000 && reads[0].getReadLength() != 0; ++trsc){
-                            get_read();
-                            find_locations();
-                            cluster_and_examine_locations();
-                            report_hits();
-                            reads[0] = fastq_records[thread_id][0].take();
-                            if (paired_end)
-                                reads[1] = fastq_records[thread_id][1].take();
-                        }
-                        //System.out.println("ID" + thread_id + ": " + num_alns + "/" + num_hits);
-                        tx.success();
-                    }// for each read
+                try(Transaction tx = graphDb.beginTx()){
+                    while (reads[0].getReadLength() != 0) {
+                        get_read();
+                        find_locations();
+                        cluster_and_examine_locations();
+                        report_hits();
+                        reads[0] = fastq_records[thread_id][0].take();
+                        if (paired_end)
+                            reads[1] = fastq_records[thread_id][1].take();
+                    }
+                    tx.success();
                 }
             }catch(InterruptedException e){
                 System.err.println(e.getMessage());
@@ -668,7 +633,7 @@ public class GenomeLayer {
                             current_kmer.next_kmer(binary[forward_read[mate].charAt(pos)] & 3);
                     } catch (NotFoundException|ClassCastException ex){
                         //num_exceptions++;
-                        System.out.println(ex.getMessage());
+                        //System.out.println(ex.getMessage());
                     } 
                     //System.out.println(current_kmer.toString());
                 }
@@ -677,6 +642,8 @@ public class GenomeLayer {
         
         public void get_read(){
             read_len[0] = reads[0].getReadLength();
+            quality[0].setLength(0);
+            quality[0].append(reads[0].getBaseQualityString());
             forward_read[0].setLength(0);
             forward_read[0].append(reads[0].getReadString());
             reverse_read[0].setLength(0);
@@ -684,6 +651,8 @@ public class GenomeLayer {
             reverse_complement(reverse_read[0]);
             read_name[0] = getBaseId(reads[0].getReadName());
             if (paired_end){
+                quality[1].setLength(0);
+                quality[1].append(reads[1].getBaseQualityString());
                 read_len[1] = reads[1].getReadLength();
                 forward_read[1].setLength(0);
                 forward_read[1].append(reads[1].getReadString());
@@ -741,8 +710,7 @@ public class GenomeLayer {
                     genome = address[0];
                     if (locations[mate][genome] != null){// should map against this genome
                         sequence = address[1];
-                        if (!sequences[mate][genome].contains(sequence))
-                            sequences[mate][genome].add(sequence);
+                        sequences[mate][genome].add(sequence);
                     // calculate the locations based on the offsets in the node    
                         location_array = (int[])r.getProperty(seq_id);
                         seq_len = sequence_length[genome][sequence];
@@ -784,7 +752,7 @@ public class GenomeLayer {
                 }
             }            
         }
-        
+                
         public void extract_address(int[] a, String prp){
             int i;
             char ch;
@@ -801,12 +769,14 @@ public class GenomeLayer {
 
         public void cluster_and_examine_locations(){
             int genome, sequence, mate, first_start, prev_start;
-            int ref_start,i, j, n, count, num_segments = paired_end ? 2 : 1;;
+            int ref_start,i, j, n, count, num_segments = paired_end ? 2 : 1;
+            Iterator<Integer> itr;
             for (mate = 0; mate < num_segments; ++mate){
                 for (i = 0; i < genome_numbers.size(); ++i){
                     genome = genome_numbers.get(i);
-                    while (!sequences[mate][genome].isEmpty()){
-                        sequence = sequences[mate][genome].remove();
+                    itr = sequences[mate][genome].iterator();
+                    while (itr.hasNext()){
+                        sequence = itr.next();
                         if (locations[mate][genome][sequence].size() > 0){
                             locations[mate][genome][sequence].sort(intcomp);
                             first_start = prev_start = locations[mate][genome][sequence].get(0);
@@ -835,6 +805,7 @@ public class GenomeLayer {
                             hit_counts.clear();
                         }
                     }
+                    sequences[mate][genome].clear();
                 }
             }
         }
@@ -859,14 +830,15 @@ public class GenomeLayer {
             num_hits++;
             reference.setLength(0);
             genome_scanner.get_sub_sequence(reference, genome, sequence, start, stop - start + 1, true);
-            if (find_similar_subject(mate, genome, sequence, start, forward)){
+            if (alignments[mate].size() < ALIGNMENT_BOUND * read_len[mate] && 
+                find_similar_subject(mate, genome, sequence, start, forward)){
                 if (valid_hit())
                     hits[mate][genome].offer(new single_hit(alignment_result));
             } else {
                 num_alns++;
                 perform_alignment(banded_alignment, mate, genome, sequence, start, forward);
                 h = new single_hit(alignment_result);
-                alignments[mate][genome].add(h);
+                alignments[mate].add(h);
                 if (valid_hit())
                     hits[mate][genome].offer(h);
             }
@@ -903,31 +875,24 @@ public class GenomeLayer {
         }
 
         public boolean find_similar_subject(int mate, int curr_genome, int cur_seq, int cur_start, boolean cur_fwd) {
-            int i;
             single_hit similar_alignment;
-            int genome;
             boolean found = false;
-            for (i = 0; i < genome_numbers.size() && !found; ++i){
-                genome = genome_numbers.get(i);
-                if (genome > curr_genome)
-                    break;
-                Iterator<single_hit> itr = alignments[mate][genome].iterator();
-                while (itr.hasNext() && !found) {
-                    similar_alignment = itr.next();
-                    if (are_equal(similar_alignment.reference, reference)){
-                        alignment_result.genome = curr_genome;
-                        alignment_result.sequence = cur_seq;
-                        alignment_result.identity = similar_alignment.identity;
-                        alignment_result.score = similar_alignment.score;
-                        alignment_result.start = cur_start;
-                        alignment_result.offset = similar_alignment.offset;
-                        alignment_result.length = similar_alignment.length;
-                        alignment_result.deletions = similar_alignment.deletions;
-                        alignment_result.forward = cur_fwd;
-                        alignment_result.cigar = similar_alignment.cigar.toString();
-                        alignment_result.reference = reference.toString();
-                        found = true;
-                    }
+            Iterator<single_hit> itr = alignments[mate].iterator();
+            while (itr.hasNext() && !found) {
+                similar_alignment = itr.next();
+                if (are_equal(similar_alignment.reference, reference)){
+                    alignment_result.genome = curr_genome;
+                    alignment_result.sequence = cur_seq;
+                    alignment_result.identity = similar_alignment.identity;
+                    alignment_result.score = similar_alignment.score;
+                    alignment_result.start = cur_start;
+                    alignment_result.offset = similar_alignment.offset;
+                    alignment_result.length = similar_alignment.length;
+                    alignment_result.deletions = similar_alignment.deletions;
+                    alignment_result.forward = cur_fwd;
+                    alignment_result.cigar = similar_alignment.cigar.toString();
+                    alignment_result.reference = reference.toString();
+                    found = true;
                 }
             }
             return found;
@@ -967,7 +932,9 @@ public class GenomeLayer {
                     clear_hits_list();
                 }
             }
-            clear_alignments();
+            alignments[0].clear();
+            if (paired_end)
+                alignments[1].clear();
         }
         
         public void call_mode(){
@@ -995,19 +962,40 @@ public class GenomeLayer {
                 } while(!hits[0][genome].isEmpty());
                 hits[0][genome].clear();
             } else {
+                boolean offered = false;
                 single_hit h1, h2;
                 paired_hit h;
                 Iterator<single_hit> itr;
+                int frag_len, best_frag_len;
                 do{
-                    h1 = hits[0][genome].isEmpty()?new single_hit(genome,0,0,-1,-1,0,0,0,true,null,null):hits[0][genome].remove();
+                    frag_len = best_frag_len = Integer.MAX_VALUE;
+                    h1 = hits[0][genome].isEmpty() ? null : hits[0][genome].remove();
                     itr = hits[1][genome].iterator();
                     do{
-                        h2 = hits[1][genome].isEmpty()?new single_hit(genome,0,0,-1,-1,0,0,0,true,null,null):itr.next();
-                        h = new paired_hit(fragment_length(h1, h2), h1.genome, h1.sequence, h1.identity, h1.score, h1.start, h1.offset, h1.length, h1.deletions, h1.forward, h1.cigar, h1.reference,
-                                           h2.genome, h2.sequence, h2.identity, h2.score, h2.start, h2.offset, h2.length, h2.deletions, h2.forward, h2.cigar, h2.reference);
+                        h2 = hits[1][genome].isEmpty() ? null : itr.next();
+                        if (h1 != null && h2 != null){
+                            if (h1.sequence != h2.sequence)
+                                continue;
+                            frag_len = fragment_length(h1, h2);
+                            if (frag_len < best_frag_len)
+                                best_frag_len = frag_len;
+                            else
+                                continue;
+                        }
+                        h = new paired_hit(frag_len, 
+                                h1 == null ? new single_hit(genome,0,0,-1,-1,0,0,0,true,null,null) : new single_hit(h1), 
+                                h2 == null ? new single_hit(genome,0,0,-1,-1,0,0,0,true,null,null) : new single_hit(h2));
                         paired_hits.offer(h);
+                        offered = true;
                     } while (itr.hasNext());
                 } while (!hits[0][genome].isEmpty());
+                if (!offered){
+                    h1 = hits[0][genome].isEmpty()?new single_hit(genome,0,0,-1,-1,0,0,0,true,null,null):
+                                                   new single_hit(hits[0][genome].peek());
+                    h2 = hits[1][genome].isEmpty()?new single_hit(genome,0,0,-1,-1,0,0,0,true,null,null):
+                                                   new single_hit(hits[1][genome].peek());
+                    paired_hits.offer(new paired_hit(Integer.MAX_VALUE, h1, h2));
+                }
                 hits[0][genome].clear();// is already empty
                 hits[1][genome].clear();
             }
@@ -1037,58 +1025,58 @@ public class GenomeLayer {
             } else {
                 paired_hit h, best_hit;
                 h = paired_hits.remove(); 
-                best_hit = new paired_hit(h);
+                best_hit = new paired_hit(h.fragment_length, h.h1, h.h2);
                 if (best_hit.get_max_start() != -1){
                     if(!paired_hits.isEmpty()){
                         h = paired_hits.remove();
                         if (phc.compare(h, best_hit) > 0){
                             if (best_hit.get_min_start() != -1){
-                                write_paired_sam_record(best_hit, new int[]{0, 0});
-                                unique[best_hit.genome1]++;
-                                unique[best_hit.genome2]++;
-                            } else if (best_hit.start1 != -1){
-                                write_paired_sam_record(best_hit, new int[]{0, 4});
-                                unique[best_hit.genome1]++;
-                                unmapped[best_hit.genome2]++;
-                            } else if (best_hit.start2 != -1){
-                                write_paired_sam_record(best_hit, new int[]{4, 0});
-                                unique[best_hit.genome2]++;
-                                unmapped[best_hit.genome1]++;
+                                write_paired_sam_record(best_hit, new int[]{1, 1});
+                                unique[best_hit.h1.genome]++;
+                                unique[best_hit.h2.genome]++;
+                            } else if (best_hit.h1.start != -1){
+                                write_paired_sam_record(best_hit, new int[]{1, 5});
+                                unique[best_hit.h1.genome]++;
+                                unmapped[best_hit.h2.genome]++;
+                            } else if (best_hit.h2.start != -1){
+                                write_paired_sam_record(best_hit, new int[]{5, 1});
+                                unique[best_hit.h2.genome]++;
+                                unmapped[best_hit.h1.genome]++;
                             }
                         } else {
                             if (best_hit.get_min_start() != -1){
-                                write_paired_sam_record(best_hit, new int[]{0, 0});
-                                shared[best_hit.genome1]++;
-                                shared[best_hit.genome2]++;
-                            } else if (best_hit.start1 != -1){
-                                write_paired_sam_record(best_hit, new int[]{0, 4});
-                                shared[best_hit.genome1]++;
-                                unmapped[best_hit.genome2]++;
-                            } else if (best_hit.start2 != -1){
-                                write_paired_sam_record(best_hit, new int[]{4, 0});
-                                shared[best_hit.genome2]++;
-                                unmapped[best_hit.genome1]++;
+                                write_paired_sam_record(best_hit, new int[]{1, 1});
+                                shared[best_hit.h1.genome]++;
+                                shared[best_hit.h2.genome]++;
+                            } else if (best_hit.h1.start != -1){
+                                write_paired_sam_record(best_hit, new int[]{1, 5});
+                                shared[best_hit.h1.genome]++;
+                                unmapped[best_hit.h2.genome]++;
+                            } else if (best_hit.h2.start != -1){
+                                write_paired_sam_record(best_hit, new int[]{5, 1});
+                                shared[best_hit.h2.genome]++;
+                                unmapped[best_hit.h1.genome]++;
                             }
                         }
                     } else {
                         if (best_hit.get_min_start() != -1){
-                            write_paired_sam_record(best_hit, new int[]{0, 0});
-                            unique[best_hit.genome1]++;
-                            unique[best_hit.genome2]++;
-                        } else if (best_hit.start1 != -1){
-                            write_paired_sam_record(best_hit, new int[]{0, 4});
-                            unique[best_hit.genome1]++;
-                            unmapped[best_hit.genome2]++;
-                        } else if (best_hit.start2 != -1){
-                            write_paired_sam_record(best_hit, new int[]{4, 0});
-                            unique[best_hit.genome2]++;
-                            unmapped[best_hit.genome1]++;
+                            write_paired_sam_record(best_hit, new int[]{1, 1});
+                            unique[best_hit.h1.genome]++;
+                            unique[best_hit.h2.genome]++;
+                        } else if (best_hit.h1.start != -1){
+                            write_paired_sam_record(best_hit, new int[]{1, 5});
+                            unique[best_hit.h1.genome]++;
+                            unmapped[best_hit.h2.genome]++;
+                        } else if (best_hit.h2.start != -1){
+                            write_paired_sam_record(best_hit, new int[]{5, 1});
+                            unique[best_hit.h2.genome]++;
+                            unmapped[best_hit.h1.genome]++;
                         }
                     }
                 } else {
-                    unmapped[best_hit.genome1]++;
-                    unmapped[best_hit.genome2]++;
-                    write_paired_sam_record(best_hit, new int[]{4, 4});
+                    unmapped[best_hit.h1.genome]++;
+                    unmapped[best_hit.h2.genome]++;
+                    write_paired_sam_record(best_hit, new int[]{5, 5});
                 }
             }
         }
@@ -1134,46 +1122,46 @@ public class GenomeLayer {
                     //System.out.print(h.fragment_length+" ");
                     if (h.get_max_start() == -1 || phc.compare(h, best_hit) == 1)
                         break;
-                    sum_freq += raw_abundance[h.genome1] / genome_sizes[h.genome1];
+                    sum_freq += raw_abundance[h.h1.genome] / genome_sizes[h.h1.genome];
                     paired_hits_2.add(h);
                 }
                 //System.out.println();
                 rnd = rand.nextDouble();
                 while(!paired_hits_2.isEmpty()){
                     best_hit = paired_hits_2.remove();
-                    freq += raw_abundance[best_hit.genome1] / genome_sizes[best_hit.genome1];
+                    freq += raw_abundance[best_hit.h1.genome] / genome_sizes[best_hit.h1.genome];
                     if (rnd < freq / sum_freq)
                         break;
                 }
                 if (best_hit.get_max_start() != -1){
                     if (best_hit.get_min_start() != -1){
-                        write_paired_sam_record(best_hit, new int[]{0, 0});
+                        write_paired_sam_record(best_hit, new int[]{1, 1});
                         if (count == 1){
-                            unique[best_hit.genome1]++;
-                            unique[best_hit.genome2]++;
+                            unique[best_hit.h1.genome]++;
+                            unique[best_hit.h2.genome]++;
                         } else {
-                            shared[best_hit.genome1]++;
-                            shared[best_hit.genome2]++;
+                            shared[best_hit.h1.genome]++;
+                            shared[best_hit.h2.genome]++;
                         }
-                    } else if (best_hit.start1 != -1){
-                        write_paired_sam_record(best_hit, new int[]{0, 4});
-                        unmapped[best_hit.genome2]++;
+                    } else if (best_hit.h1.start != -1){
+                        write_paired_sam_record(best_hit, new int[]{1, 5});
+                        unmapped[best_hit.h2.genome]++;
                         if (count == 1)
-                            unique[best_hit.genome1]++;
+                            unique[best_hit.h1.genome]++;
                         else 
-                            shared[best_hit.genome1]++;
-                    } else if (best_hit.start2 != -1){
-                        write_paired_sam_record(best_hit, new int[]{4, 0});
-                        unmapped[best_hit.genome1]++;
+                            shared[best_hit.h1.genome]++;
+                    } else if (best_hit.h2.start != -1){
+                        write_paired_sam_record(best_hit, new int[]{5, 1});
+                        unmapped[best_hit.h1.genome]++;
                         if (count == 1)
-                            unique[best_hit.genome2]++;
+                            unique[best_hit.h2.genome]++;
                         else 
-                            shared[best_hit.genome2]++;
+                            shared[best_hit.h2.genome]++;
                     }
                 } else { 
-                       write_paired_sam_record(best_hit, new int[]{4, 4});
-                        unmapped[best_hit.genome1]++;
-                        unmapped[best_hit.genome2]++;
+                       write_paired_sam_record(best_hit, new int[]{5, 5});
+                        unmapped[best_hit.h1.genome]++;
+                        unmapped[best_hit.h2.genome]++;
                 }
             }
         }
@@ -1219,35 +1207,35 @@ public class GenomeLayer {
                     while (!paired_hits_2.isEmpty()){
                         best_hit = paired_hits_2.remove();
                         if (best_hit.get_min_start() != -1){
-                            write_paired_sam_record(best_hit, new int[]{best_hit.genome1 == prev_genome ? 256 : 0, best_hit.genome2 == prev_genome ? 256 : 0});
+                            write_paired_sam_record(best_hit, new int[]{best_hit.h1.genome == prev_genome ? 257 : 1, best_hit.h2.genome == prev_genome ? 257 : 1});
                             if (count == 1){
-                                unique[best_hit.genome1]++;
-                                unique[best_hit.genome2]++;
+                                unique[best_hit.h1.genome]++;
+                                unique[best_hit.h2.genome]++;
                             } else {
-                                shared[best_hit.genome1]++;
-                                shared[best_hit.genome2]++;
+                                shared[best_hit.h1.genome]++;
+                                shared[best_hit.h2.genome]++;
                             }
-                        } else if (best_hit.start1 != -1){
-                            write_paired_sam_record(best_hit, new int[]{best_hit.genome1 == prev_genome ? 256 : 0, 4});
-                            unmapped[best_hit.genome2]++;
+                        } else if (best_hit.h1.start != -1){
+                            write_paired_sam_record(best_hit, new int[]{best_hit.h1.genome == prev_genome ? 257 : 1, 5});
+                            unmapped[best_hit.h2.genome]++;
                             if (count == 1)
-                                unique[best_hit.genome1]++;
+                                unique[best_hit.h1.genome]++;
                             else 
-                                shared[best_hit.genome1]++;
-                        } else if (best_hit.start2 != -1){
-                            write_paired_sam_record(best_hit, new int[]{4, best_hit.genome2 == prev_genome ? 256 : 0});
-                            unmapped[best_hit.genome1]++;
+                                shared[best_hit.h1.genome]++;
+                        } else if (best_hit.h2.start != -1){
+                            write_paired_sam_record(best_hit, new int[]{5, best_hit.h2.genome == prev_genome ? 257 : 1});
+                            unmapped[best_hit.h1.genome]++;
                             if (count == 1)
-                                unique[best_hit.genome2]++;
+                                unique[best_hit.h2.genome]++;
                             else 
-                                shared[best_hit.genome2]++;
+                                shared[best_hit.h2.genome]++;
                         }
-                        prev_genome = best_hit.genome1;
+                        prev_genome = best_hit.h1.genome;
                     }
                 } else { 
-                       write_paired_sam_record(best_hit, new int[]{4, 4});
-                        unmapped[best_hit.genome1]++;
-                        unmapped[best_hit.genome2]++;
+                       write_paired_sam_record(best_hit, new int[]{5, 5});
+                        unmapped[best_hit.h1.genome]++;
+                        unmapped[best_hit.h2.genome]++;
                 }
                 
             }
@@ -1262,22 +1250,7 @@ public class GenomeLayer {
                 paired_hits.clear();
                 paired_hits_2.clear();
             }
-        }
-        
-        public void clear_alignments(){    
-            int i, genome;
-            for (i = 0; i < genome_numbers.size(); ++i){
-                genome = genome_numbers.get(i);
-                alignments[0][genome].clear();
-            }
-            if (paired_end){
-                for (i = 0; i < genome_numbers.size(); ++i){
-                    genome = genome_numbers.get(i);
-                    alignments[1][genome].clear();
-                }
-            }
-        }
-        
+        }        
 
         public void write_single_sam_record(single_hit h, int flag){
             SAMRecord sam_record = new SAMRecord(null);
@@ -1291,114 +1264,111 @@ public class GenomeLayer {
                 sam_record.setFlags(flag);
                 sam_record.setReadName(reads[0].getReadName());
                 sam_record.setAlignmentStart(h.start + h.offset + 1);
-                sam_record.setMappingQuality((int)Math.round(-10 * Math.log10(1 - (h.identity - 1) / 100.0)) + 1);
+                sam_record.setMappingQuality((int)Math.ceil(-10 * Math.log10(1 - (h.identity - 0.001))));
                 sam_record.setCigarString(h.cigar);
                 sam_record.setReadString((h.forward?forward_read[0]:reverse_read[0]).toString());
+                sam_record.setBaseQualityString(quality[0].toString());
             }
-            synchronized(sam_headers[h.genome]){
+            //synchronized(sam_headers[h.genome]){
                 synchronized(sam_writers[h.genome]){
-                    sam_record.setHeader(sam_headers[h.genome]);
+                    //sam_record.setHeader(sam_headers[h.genome]);
                     sam_writers[h.genome].addAlignment(sam_record);
                 }
-            }
+            //}
         }
         
         public void write_paired_sam_record(paired_hit h, int[] flag){
         // the first segment    
-            SAMRecord sam_record = new SAMRecord(null);
-            int position1 = h.start1 + h.offset1 + 1;
-            int position2 = h.start2 + h.offset2 + 1;;
+            SAMRecord sam_record1, sam_record2;
+            sam_record1 = new SAMRecord(null);
+            int position1 = h.h1.start + h.h1.offset + 1;
+            int position2 = h.h2.start + h.h2.offset + 1;;
             flag[0] |= 64; 
-            if (h.start1 == -1){
-                sam_record.setReadName(read_name[0]);
-                sam_record.setFlags(flag[0]);
-                sam_record.setReadString(forward_read[0].toString());
+            if (h.h1.start == -1){
+                sam_record1.setReadName(read_name[0]);
+                sam_record1.setFlags(flag[0]);
+                sam_record1.setReadString(forward_read[0].toString());
             } else {
-                flag[0] |= h.forward1?0:16; // SEQ being reverse complemented
-                flag[0] |= !h.forward2?32:0; // SEQ being reverse complemented
+                flag[0] |= h.h1.forward?0:16; // SEQ being reverse complemented
+                flag[0] |= !h.h2.forward?32:0; // SEQ being reverse complemented
             //qname
-                sam_record.setReadName(read_name[0]); 
+                sam_record1.setReadName(read_name[0]); 
             //flag    
-                sam_record.setFlags(flag[0]); 
+                sam_record1.setFlags(flag[0]); 
             //rname    
-                sam_record.setReferenceName(sequence_titles[h.genome1][h.sequence1].split("\\s")[0]);
+                sam_record1.setReferenceName(sequence_titles[h.h1.genome][h.h1.sequence].split("\\s")[0]);
             //pos    
-                sam_record.setAlignmentStart(position1);
+                sam_record1.setAlignmentStart(position1);
             //mapq    
-                //sam_record.setMappingQuality((int)Math.round(-10 * Math.log10(1 - (h.identity1 - 0.01))) + 1);
-                sam_record.setMappingQuality((int)Math.round(h.identity1 * 100));
+                sam_record1.setMappingQuality((int)Math.ceil(-10 * Math.log10(1 - (h.h1.identity - 0.001))));
+                //sam_record.setMappingQuality((int)Math.round(h.identity1 * 100));
             //cigar    
-                sam_record.setCigarString(h.cigar1);
+                sam_record1.setCigarString(h.h1.cigar);
             //rnext
-                if (h.start2 == -1)
-                    sam_record.setMateReferenceName("*");
+                if (h.h2.start == -1)
+                    sam_record1.setMateReferenceName("*");
                 else 
-                    sam_record.setMateReferenceName(sequence_titles[h.genome2][h.sequence2].split("\\s")[0]);
+                    sam_record1.setMateReferenceName(sequence_titles[h.h2.genome][h.h2.sequence].split("\\s")[0]);
             //pnext 
-                sam_record.setMateAlignmentStart(position2);
+                sam_record1.setMateAlignmentStart(position2);
             //tlen
-                if (h.start2 == -1)
-                    sam_record.setInferredInsertSize(0);
+                if (h.h2.start == -1)
+                    sam_record1.setInferredInsertSize(0);
                 else if (position2 > position1)
-                    sam_record.setInferredInsertSize(position2 - position1 + reads[0].getReadLength());
+                    sam_record1.setInferredInsertSize(position2 - position1 + reads[0].getReadLength());
                 else
-                    sam_record.setInferredInsertSize(-(position1 - position2 + reads[1].getReadLength()));
+                    sam_record1.setInferredInsertSize(-(position1 - position2 + reads[1].getReadLength()));
             //seq    
-                sam_record.setReadString((h.forward1?forward_read[0]:reverse_read[0]).toString());
+                sam_record1.setReadString((h.h1.forward?forward_read[0]:reverse_read[0]).toString());
             //qual    
-            }
-            synchronized(sam_headers[h.genome1]){
-                synchronized(sam_writers[h.genome1]){
-                    sam_record.setHeader(sam_headers[h.genome1]);
-                    sam_writers[h.genome1].addAlignment(sam_record);
-                }
+                sam_record1.setBaseQualityString(quality[0].toString());
             }
         // the second segment    
-            sam_record = new SAMRecord(null);
+            sam_record2 = new SAMRecord(null);
             flag[1] |= 128; 
-            if (h.start2 == -1){ // not mapped
-                sam_record.setReadName(read_name[1]);
-                sam_record.setFlags(flag[1]);
-                sam_record.setReadString(forward_read[1].toString());
+            if (h.h2.start == -1){ // not mapped
+                sam_record2.setReadName(read_name[1]);
+                sam_record2.setFlags(flag[1]);
+                sam_record2.setReadString(forward_read[1].toString());
             } else {
-                flag[1] |= h.forward2?0:16; // SEQ being reverse complemented
-                flag[1] |= !h.forward1?32:0; // SEQ being reverse complemented
+                flag[1] |= h.h2.forward?0:16; // SEQ being reverse complemented
+                flag[1] |= !h.h1.forward?32:0; // SEQ being reverse complemented
             //qname
-                sam_record.setReadName(read_name[1]); 
+                sam_record2.setReadName(read_name[1]); 
             //flag    
-                sam_record.setFlags(flag[1]); 
+                sam_record2.setFlags(flag[1]); 
             //rname    
-                sam_record.setReferenceName(sequence_titles[h.genome2][h.sequence2].split("\\s")[0]);
+                sam_record2.setReferenceName(sequence_titles[h.h2.genome][h.h2.sequence].split("\\s")[0]);
             //pos    
-                sam_record.setAlignmentStart(position2);
+                sam_record2.setAlignmentStart(position2);
             //mapq    
-                //sam_record.setMappingQuality((int)Math.round(-10 * Math.log10(1 - (h.identity2 - 0.01))) + 1);
-                sam_record.setMappingQuality((int)Math.round(h.identity2 * 100));
+                sam_record2.setMappingQuality((int)Math.ceil(-10 * Math.log10(1 - (h.h2.identity - 0.001))));
+                //sam_record.setMappingQuality((int)Math.round(h.identity2 * 100));
             //cigar    
-                sam_record.setCigarString(h.cigar2);
+                sam_record2.setCigarString(h.h2.cigar);
             //rnext
-                if (h.start1 == -1)
-                    sam_record.setMateReferenceName("*");
+                if (h.h1.start == -1)
+                    sam_record2.setMateReferenceName("*");
                 else 
-                    sam_record.setMateReferenceName(sequence_titles[h.genome1][h.sequence1].split("\\s")[0]);
+                    sam_record2.setMateReferenceName(sequence_titles[h.h1.genome][h.h1.sequence].split("\\s")[0]);
             //pnext    
-                sam_record.setMateAlignmentStart(position1);
+                sam_record2.setMateAlignmentStart(position1);
             //tlen
-                if (h.start1 == -1)
-                    sam_record.setInferredInsertSize(0);
+                if (h.h1.start == -1)
+                    sam_record2.setInferredInsertSize(0);
                 else if (position2 > position1)
-                    sam_record.setInferredInsertSize(-(position2 - position1 + reads[0].getReadLength()));
+                    sam_record2.setInferredInsertSize(-(position2 - position1 + reads[0].getReadLength()));
                 else
-                    sam_record.setInferredInsertSize(position1 - position2 + reads[1].getReadLength());
+                    sam_record2.setInferredInsertSize(position1 - position2 + reads[1].getReadLength());
             //seq    
-                sam_record.setReadString((h.forward2?forward_read[1]:reverse_read[1]).toString());
+                sam_record2.setReadString((h.h2.forward?forward_read[1]:reverse_read[1]).toString());
             //qual    
+                sam_record2.setBaseQualityString(quality[1].toString());
             }
-            synchronized(sam_headers[h.genome2]){
-                synchronized(sam_writers[h.genome2]){
-                    sam_record.setHeader(sam_headers[h.genome2]);
-                    sam_writers[h.genome2].addAlignment(sam_record);
-                }
+            synchronized(sam_writers[h.h1.genome]){
+                //sam_record.setHeader(sam_headers[h.h1.genome]);
+                sam_writers[h.h1.genome].addAlignment(sam_record1);
+                sam_writers[h.h2.genome].addAlignment(sam_record2);
             }
         }
         
@@ -1406,8 +1376,6 @@ public class GenomeLayer {
         public int fragment_length(single_hit h1, single_hit h2){
             int frag_len;
             int position1, position2;
-            if (h1.start == -1 || h2.start == -1)
-                return Integer.MAX_VALUE;
             position1 = h1.start + h1.offset;
             position2 = h2.start + h2.offset;
             if (h1.forward)
@@ -1541,7 +1509,7 @@ public class GenomeLayer {
                 ExecutorService es = Executors.newFixedThreadPool(THREADS + 1);
                 es.execute(new Generate_fatsq_records(paired));
                 for (t = 0; t < THREADS; ++t)
-                    es.execute(new Map(t, genome_numbers[t], paired, sams, headers));
+                    es.execute(new Map(t, genome_numbers[t], paired, sams));
                 es.shutdown();
                 es.awaitTermination(10, TimeUnit.DAYS);        
             } catch (InterruptedException e){
@@ -1574,7 +1542,6 @@ public class GenomeLayer {
             }
             System.out.println("........................................");
             System.out.println("\t" + total_mapped + "\t" + total_unique + "\t" + total_unmapped);
-            System.out.println("\nNumber_of_reads = " + (total_mapped + total_unmapped));
             System.out.println("Number_of_hits = " + number_of_hits);
             System.out.println("Number_of_alignments = " + number_of_alignments + "\n");
         }

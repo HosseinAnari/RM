@@ -99,6 +99,7 @@ public class Pantools {
                                                // 2: medium
                                                // 3: high    
     public static boolean BAMFORMAT = false;
+    public static boolean INTERLEAVED = false;
     
     public static Label pangenome_label = Label.label("pangenome");
     public static Label genome_label = Label.label("genome");
@@ -399,6 +400,11 @@ public class Pantools {
                                 System.out.println("Choose CLIPPING_STRINGENCY 0, 1, 2, or 3, or do not specify it to use the default value of 0.");
                                 System.exit(1);
                         }
+                        break;
+                    case "--interleaved": case "-il":
+                        INTERLEAVED = true;
+                        --i;
+                        System.out.println("INTERLEAVED = true");
                         break;
                     case "--bam-format": case "-bf":
                         BAMFORMAT = true;
