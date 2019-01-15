@@ -8,6 +8,7 @@
 package pantools;
 
 import index.IndexDatabase;
+import index.IndexScanner;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -48,8 +49,9 @@ public class Pantools {
 
     public static GraphDatabaseService graphDb;
     public static IndexDatabase indexDb;
+    public static IndexScanner indexSc;    
     public static SequenceDatabase genomeDb;
-    public static SequenceScanner genome_scanner;    
+    public static SequenceScanner genomeSc;    
 
     public static String PATH_TO_THE_PANGENOME_DATABASE;
     public static String PATH_TO_THE_GENOMES_FILE;
@@ -82,11 +84,11 @@ public class Pantools {
     public static int THREADS = 1;
     
     public static double MIN_IDENTITY = 0.5;
-    public static int NUM_KMER_SAMPLES = 10;
+    public static int NUM_KMER_SAMPLES = 15;
     public static int MAX_NUM_LOCATIONS = 15;
     public static int MIN_HIT_LENGTH = 13;
     public static int MAX_FRAGMENT_LENGTH = 5000;
-    public static int ALIGNMENT_BOUND = 3;    
+    public static int ALIGNMENT_BOUND = 5;    
     public static int ALIGNMENT_MODE = 2; // 0: all-hits    
                                           // -1: pan-genomic unique_best
                                           // -2: pan-genomic one_best
@@ -118,7 +120,6 @@ public class Pantools {
     public static Label intron_label = Label.label("intron");
     public static Label feature_label = Label.label("feature");
     public static Label homology_group_label = Label.label("homology_group");
-    public static Label low_complexity_label = Label.label("low_complexity");   
     
     public static enum RelTypes implements RelationshipType {
         FF, FR, RF, RR,

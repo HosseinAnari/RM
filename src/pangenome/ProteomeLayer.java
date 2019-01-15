@@ -57,7 +57,7 @@ import static pantools.Pantools.homology_group_label;
 import static pantools.Pantools.mRNA_label;
 import static pantools.Pantools.pangenome_label;
 import static pantools.Pantools.genomeDb;
-import static pantools.Pantools.genome_scanner;
+import static pantools.Pantools.genomeSc;
 import static pantools.Pantools.graphDb;
 import static pantools.Pantools.indexDb;
 

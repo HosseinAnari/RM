@@ -6,6 +6,7 @@
 package sequence;
 
 import index.IndexDatabase;
+import index.IndexScanner;
 import index.kmer;
 import static pantools.Pantools.DEBUG;
 import static pantools.Pantools.complement;
@@ -30,7 +31,7 @@ public class SequenceScanner {
         database = db;
         position = 0;
         K = k;
-        curr_kmer = new kmer(K,pre_len);
+        curr_kmer = new kmer(K, pre_len);
     }
     
     public int get_genome(){
@@ -434,7 +435,7 @@ public class SequenceScanner {
         return tmp_kmer;             
     }   
     
-    public long find_curr_kmer(IndexDatabase inx){
+    public long find_curr_kmer(IndexScanner inx){
         curr_index = inx.find(curr_kmer);
         return curr_index;
     }
