@@ -44,9 +44,14 @@ public class LocalSequenceAlignmentTest {
         int i, j, m, n;
         LocalSequenceAlignment instance = new LocalSequenceAlignment(GAP_OPEN, GAP_EXT, 1000, 0, 'N');
         StringBuilder seq1, seq2;
-        seq2 = new StringBuilder("AGTAGCAAATTAAGAGAACAAAA");
+        seq2 = new StringBuilder("TTTAGAGGCGAGATGGTAGTACAGGAAATTTAAGAGGACAAATCTTTTTCTCTTT");
         seq1 = new StringBuilder(  "AGGCAAATTAAGAGAACAA");
         instance.align(seq1, seq2);
+        System.out.println(instance.get_cigar());
+        System.out.println(instance.get_alignment());
+        System.out.println(instance.get_offset());
+        System.out.println(instance.get_identity());
+        System.out.println(instance.get_similarity());
     }
     
 }

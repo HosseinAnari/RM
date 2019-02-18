@@ -167,11 +167,11 @@ PanTools commands
    --database_path or -dp
       path to the pangenome database. 
    -1 
-      a text file containing path to the first short-read archive in FASTQ
-      or FASTA format. 
+      the first short-read archive in FASTQ format, which can be 
+      gz/bz2 compressed. This file can be precessed interleaved by -il option.
    -2 
-      optionally, a text file containing path to the second short-read 
-      archive in FASTQ or FASTA format. 
+      optionally, the second short-read archive in FASTQ format, which can be 
+      gz/bz2 compressed. 
    --genome-numbers or -gn
       a text file containing genome_numbers to map reads against in 
       each line. 
@@ -179,34 +179,41 @@ PanTools commands
       path to the output files.
    --threads-number or -tn (default = 1) 
       the number of parallel working threads
-   --min-mapping-score or -mms (default = 20)
-      the minimum of read mapping score
-   --num-kmer-samples or -nks (default = 20)
+   --min-mapping-identity or -mm1 (default = 0.5)
+      the minimum acceptable identity of the alignment
+   --num-kmer-samples or -nks (default = 15)
       the number of kmers sampled from read
-   --min-hit-length or -mhl (default = 17)
+   --min-hit-length or -mhl (default = 13)
       the minimum acceptable length of alignment after soft-clipping
    --max-alignment-length or -mal (default = 1000)
       the maximum acceptable length of alignment
    --max-fragment-length or -mfl (default = 2000)
       the maximum acceptable length of fragment
-   --max-num-locations or -mnl (default = 20)
+   --max-num-locations or -mnl (default = 15)
       the maximum number of location of candidate hits to examine
-   --alignment-bound or -ab (default = 7)
+   --alignment-bound or -ab (default = 5)
       the length of bound of banded alignment
-   --clipping-stringency or -ci (default = 2)
+   --clipping-stringency or -ci (default = 1)
       the stringency of soft-clipping  
       0 : no soft clipping
       1 : low
       2 : medium
       3 : high
-   --bam-format or -bf (default = FALSE)
-      the alignment format (.sam or .bam)
-   --alignment-mode or -am (default = 0)
+   --bam-format or -bf 
+      the alignment file in .BAM format 
+   --alignment-mode or -am (default = 2)
       the alignment mode
-      0 : Competitive, only-best
-      1 : Competitive, all-bests
-      2 : Normal, only-best
+      -1 : Competitive, unique-bests
+      -2 : Competitive, random-best
+      -3 : Competitive, all-bests
+      1 : Normal, unique-bests
+      2 : Normal, random-best
       3 : Normal, all-bests
+      0 : Normal, all-hits
+
+   --interleaved or -i
+      precess the fastq file as interleaved paired-end reads
+
 <version or v>
    To show the versions of PanTools and Neo4j.
    

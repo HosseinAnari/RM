@@ -1048,14 +1048,14 @@ public class LocalSequenceAlignment {
                 subject.append( seq2.charAt(j-1) );
             }
         }
-        for (;i > 0; --i){
+        /*for (;i > 0; --i){
             query.append( seq1.charAt(i-1) );
             subject.append( '-' );
         }
         for (;j > 0; --j){
             query.append( '-' );
             subject.append( seq2.charAt(j-1) );
-        }            
+        }  */          
         return subject.reverse() + "\n" + query.reverse();
     }
 
@@ -1252,7 +1252,7 @@ public class LocalSequenceAlignment {
         for (; i > 0 && j > 0; --i, --j)
              if (seq1.charAt(i-1) == seq2.charAt(j-1))
                 identicals++;
-        identity = ((double)identicals) / seq1.length(); 
+        identity = ((double)identicals) / (seq1.length() + deletions); 
         return cigar.toString();
     }
     

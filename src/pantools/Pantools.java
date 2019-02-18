@@ -72,9 +72,9 @@ public class Pantools {
     public static int MIN_PROTEIN_IDENTITY = 95;
 
     public static int K_SIZE = -1;
-    public static int MAX_ALIGNMENT_LENGTH = 1000;
+    public static int MAX_ALIGNMENT_LENGTH = 2000;
     public static int GAP_OPEN = -20;
-    public static int GAP_EXT = -2;
+    public static int GAP_EXT = -3;
     public static int ANCHORS_DISTANCE = 10000; // The distance between two anchor nodes
     public static int MAX_TRANSACTION_SIZE = 100;    //   The number of transactions to be committed in batch
     public static int cores = Runtime.getRuntime().availableProcessors();
@@ -89,12 +89,13 @@ public class Pantools {
     public static int MIN_HIT_LENGTH = 13;
     public static int MAX_FRAGMENT_LENGTH = 5000;
     public static int ALIGNMENT_BOUND = 5;    
+    public static int SHOULDER = 100;    
     public static int ALIGNMENT_MODE = 2; // 0: all-hits    
                                           // -1: pan-genomic unique_best
-                                          // -2: pan-genomic one_best
+                                          // -2: pan-genomic random_best
                                           // -3: pan-genomic all_bests
                                           // 1: genomic unique_best
-                                          // 2: genomic one_best
+                                          // 2: genomic random_best
                                           // 3: genomic all_bests
     public static int CLIPPING_STRINGENCY = 1; // 0: no-clipping
                                                // 1: low
@@ -412,7 +413,7 @@ public class Pantools {
                         --i;
                         System.out.println("BAMFORMAT = true");
                         break;
-                    case "--min_mapping-score": case "-mms":
+                    case "--min_mapping-identity": case "-mmi":
                         x = Integer.parseInt(args[i + 1]);
                         if (x >= 0 && x < 100)
                            MIN_IDENTITY = x;
@@ -492,7 +493,7 @@ public class Pantools {
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : unique pangenomic-best");
                             break;
                             case -2:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : one pangenomic-best");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : random pangenomic-best");
                             break;
                             case -3:
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : all pangenomic-bests");
@@ -501,7 +502,7 @@ public class Pantools {
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : unique genomic-best");
                             break;
                             case 2:
-                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : one genomic-best");
+                                System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : random genomic-best");
                             break;
                             case 3:
                                 System.out.println("ALIGNMENT_MODE = " + ALIGNMENT_MODE + " : all genomic-bests");
