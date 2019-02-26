@@ -413,7 +413,7 @@ public class Pantools {
                         --i;
                         System.out.println("BAMFORMAT = true");
                         break;
-                    case "--min_mapping-identity": case "-mmi":
+                    case "--min-mapping-identity": case "-mmi":
                         x = Integer.parseInt(args[i + 1]);
                         if (x >= 0 && x < 100)
                            MIN_IDENTITY = x;
@@ -766,7 +766,7 @@ public class Pantools {
 "      path to the output files.\n" +
 "   --threads-number or -tn (default = 1) \n" +
 "      the number of parallel working threads\n" +
-"   --min-mapping-identity or -mm1 (default = 0.5)\n" +
+"   --min-mapping-identity or -mmi (default = 0.5)\n" +
 "      the minimum acceptable identity of the alignment\n" +
 "   --num-kmer-samples or -nks (default = 15)\n" +
 "      the number of kmers sampled from read\n" +

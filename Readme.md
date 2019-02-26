@@ -179,7 +179,7 @@ PanTools commands
       path to the output files.
    --threads-number or -tn (default = 1) 
       the number of parallel working threads
-   --min-mapping-identity or -mm1 (default = 0.5)
+   --min-mapping-identity or -mmi (default = 0.5)
       the minimum acceptable identity of the alignment
    --num-kmer-samples or -nks (default = 15)
       the number of kmers sampled from read
