@@ -414,11 +414,11 @@ public class Pantools {
                         System.out.println("BAMFORMAT = true");
                         break;
                     case "--min-mapping-identity": case "-mmi":
-                        x = Integer.parseInt(args[i + 1]);
-                        if (x >= 0 && x < 100)
-                           MIN_IDENTITY = x;
+                        y = Double.parseDouble(args[i + 1]);
+                        if (y >= 0 && y < 1)
+                           MIN_IDENTITY = y;
                         else {
-                            System.out.println("Choose MIN_IDENTITY in the range [0..100[ or do not specify it to use the default value.");
+                            System.out.println("Choose MIN_IDENTITY in the range [0..1[ or do not specify it to use the default value.");
                             System.exit(1);
                         }
                         System.out.println("MIN_IDENTITY = " + MIN_IDENTITY);
